@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "deva-p1-back"
+version = "0.1.0"
+description = ""
+authors = ["w1vern <bndvvl@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.11.2"
+pydantic-settings = "^2.8.1"
+sqlalchemy = "^2.0.40"
+fastapi = "^0.115.12"
+pyjwt = "^2.10.1"
+python-dotenv = "^1.1.0"
+uvicorn = "^0.34.0"
+isort = "^6.0.1"
+minio = "^7.2.15"
+faststream = "^0.5.37"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
