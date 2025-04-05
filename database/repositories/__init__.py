@@ -1,2 +1,6 @@
 
 from .user_repository import UserRepository
+from .project_repository import ProjectRepository
+from .file_repository import FileRepository
+from .invited_users_repository import InvitedUsersRepository
+from .file_type_repository import FileTypeRepository
