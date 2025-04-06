@@ -1,6 +1,4 @@
-import os
 
-from fastapi import Depends
 from faststream.rabbit import RabbitBroker, fastapi
 
 from config import settings
