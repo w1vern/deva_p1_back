@@ -27,3 +27,12 @@ create_rabbit:
 
 rabbit:
 	docker start RabbitMQ
+
+gen_migration:
+	set TARGET=dev&& alembic revision --autogenerate -m "first migration"
+
+migration:
+	alembic upgrade head
+
+down_migration:
+	alembic downgrade -1
