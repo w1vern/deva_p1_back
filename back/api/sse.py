@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 from redis.asyncio.client import PubSub
 
 from back.config import Config
-from back.main import Session
+from back.db import Session
 from database.redis import get_redis_client, RedisType
 
 class SseController(Controller):

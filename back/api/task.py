@@ -7,7 +7,7 @@ from minio import Minio
 
 from back.broker import get_broker, send_message
 from back.get_auth import get_user_db
-from back.main import Session
+from back.db import Session
 
 from fastapi import File, UploadFile, HTTPException
 from minio.error import S3Error
