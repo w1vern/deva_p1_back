@@ -12,7 +12,6 @@ from back.config import Config
 from back.main import Session
 from database.redis import get_redis_client, RedisType
 
-
 class SseController(Controller):
     prefix = "/sse"
     tags = ["sse"]
