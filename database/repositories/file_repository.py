@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models import *
 from uuid import UUID
 
+from database.models.task import Task
+
 
 class FileRepository:
     def __init__(self, session: AsyncSession):
@@ -13,8 +15,9 @@ class FileRepository:
 
     async def create(self,
                      user_file_name: str,
-                     file_type: FileType,
+                     file_type: str,
                      project: Project,
+                     task: Task | None = None, 
                      created_date: datetime | None = None,
                      last_modified_date: datetime | None = None
                      ) -> Optional[File]:
@@ -22,11 +25,16 @@ class FileRepository:
             created_date = datetime.now()
         if last_modified_date is None:
             last_modified_date = datetime.now()
+        if task is None:
+            task_id = UUID(int=0)
+        else:
+            task_id = task.id
         file = File(user_file_name=user_file_name,
                     created_date=created_date,
                     last_modified_date=last_modified_date,
                     file_type=file_type,
-                    project_id=project.id)
+                    project_id=project.id,
+                    task_id = task_id)
         self.session.add(file)
         await self.session.flush()
         return await self.get_by_id(file.id)

@@ -17,8 +17,13 @@ class Settings(BaseSettings):
     rabbit_password: str = "guest"
     rabbit_ip: str = "rabbitmq"
     rabbit_port: int = 5672
-    bot_token: str = "YOUR_BOT_TOKEN"
     secret: str = "YOUR_SECRET"
-    superuser_telegram_id: str = "YOUR_TELEGRAM_ID"
+    minio_ip: str = "minio"
+    minio_port: int = 9000
+    minio_access_key: str = "minioadmin"
+    minio_secret_key: str = "minioadmin"
+    minio_bucket: str = "my-bucket"
+    minio_secure: bool = False
+    
 
 settings = Settings()
