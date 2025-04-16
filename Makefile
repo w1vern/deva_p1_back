@@ -40,5 +40,8 @@ down_migration:
 delete_migrations:
 	del database\migrations\versions\*
 
+add_db:
+	poetry add git+https://github.com/w1vern/deva_p1_db
+
 update_db:
 	poetry update deva_p1_db
