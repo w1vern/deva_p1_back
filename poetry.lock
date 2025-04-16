@@ -393,7 +393,7 @@ werkzeug = "^3.1.3"
 type = "git"
 url = "https://github.com/w1vern/deva_p1_db"
 reference = "HEAD"
-resolved_reference = "9286453de6c2a8500cec604ddb9da0dc1c6474fa"
+resolved_reference = "958b7454512a8f44b32c06101d531898ced67b1e"
 
 [[package]]
 name = "exceptiongroup"
