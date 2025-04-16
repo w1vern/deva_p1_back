@@ -36,3 +36,9 @@ migration:
 
 down_migration:
 	alembic downgrade -1
+
+delete_migrations:
+	del database\migrations\versions\*
+
+update_db:
+	poetry update deva_p1_db

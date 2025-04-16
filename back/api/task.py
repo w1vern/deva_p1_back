@@ -7,18 +7,17 @@ from minio import Minio
 
 from back.broker import get_broker, send_message
 from back.get_auth import get_user_db
-from database.database import get_db_session
-from sqlalchemy.ext.asyncio import AsyncSession
+from back.main import Session
 
 from fastapi import File, UploadFile, HTTPException
 from minio.error import S3Error
 import mimetypes
 from typing import Annotated
-from database.models.user import User
-from database.models.task import Task
-from database.repositories.file_repository import FileRepository
-from database.repositories.project_repository import ProjectRepository
-from database.repositories.task_repository import TaskRepository
+from deva_p1_db.models.user import User
+from deva_p1_db.models.task import Task
+from deva_p1_db.repositories.file_repository import FileRepository
+from deva_p1_db.repositories.project_repository import ProjectRepository
+from deva_p1_db.repositories.task_repository import TaskRepository
 from database.s3 import S3Type, get_s3_client
 from config import settings
 from faststream.rabbit import RabbitBroker
@@ -28,7 +27,7 @@ class TaskController(Controller):
     prefix = "/task"
     tags = ["task"]
 
-    def __init__(self, session: AsyncSession = Depends(get_db_session)) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @post("/create")

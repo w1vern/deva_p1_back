@@ -10,4 +10,9 @@ class UserSchema (BaseModel):
 class CredsSchema (BaseModel):
     login: str
     password: str
+
+class RegisterSchema (BaseModel):
+    login: str
+    password: str
+    password_repeat: str
     

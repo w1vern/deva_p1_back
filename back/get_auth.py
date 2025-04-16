@@ -5,10 +5,10 @@ from redis.asyncio import Redis
 
 from back.token import AccessToken
 from back.schemas.user import UserSchema
-from database.database import get_db_session
-from database.models.user import User
+from deva_p1_db.database import get_db_session
+from deva_p1_db.models.user import User
 from database.redis import RedisType, get_redis_client
-from database.repositories.user_repository import UserRepository
+from deva_p1_db.repositories.user_repository import UserRepository
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -27,7 +27,7 @@ async def get_user(access_token: str = Cookie(default=None), redis: Redis = Depe
     return access.user
 
 
-async def get_user_db(user: UserSchema = Depends(get_user), session: AsyncSession = Depends(get_db_session)) -> User:
+async def get_user_db(user: UserSchema = Depends(get_user), session: Session) -> User:
     ur = UserRepository(session)
     user_db = await ur.get_by_id(user.id)
     if user_db is None:

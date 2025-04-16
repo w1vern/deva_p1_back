@@ -375,6 +375,27 @@ test = ["certifi (>=2024)", "cryptography-vectors (==44.0.2)", "pretend (>=0.7)"
 test-randomorder = ["pytest-randomly"]
 
 [[package]]
+name = "deva-p1-db"
+version = "0.1.0"
+description = ""
+optional = false
+python-versions = "^3.12"
+files = []
+develop = false
+
+[package.dependencies]
+asyncpg = "^0.30.0"
+isort = "^6.0.1"
+sqlalchemy = "^2.0.40"
+werkzeug = "^3.1.3"
+
+[package.source]
+type = "git"
+url = "https://github.com/w1vern/deva_p1_db"
+reference = "HEAD"
+resolved_reference = "ed49b0d429dc3be28fee7c8eee37f5e36764af9d"
+
+[[package]]
 name = "exceptiongroup"
 version = "1.2.2"
 description = "Backport of PEP 654 (exception groups)"
@@ -1555,4 +1576,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "6a2f83c7515cb96efb28ac472d72be6368b466fad90a36040c6c53aae9bc98fc"
+content-hash = "848f7425b41a05cda727b8ab23b357d0ce28a8b237e79d633308f7eb76b59d1d"

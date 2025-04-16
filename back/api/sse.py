@@ -9,8 +9,7 @@ from redis.asyncio import Redis
 from redis.asyncio.client import PubSub
 
 from back.config import Config
-from database.database import get_db_session
-from sqlalchemy.ext.asyncio import AsyncSession
+from back.main import Session
 from database.redis import get_redis_client, RedisType
 
 
@@ -18,7 +17,7 @@ class SseController(Controller):
     prefix = "/sse"
     tags = ["sse"]
 
-    def __init__(self, session: AsyncSession = Depends(get_db_session)) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @get("/{task_id}")

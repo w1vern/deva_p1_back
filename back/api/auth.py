@@ -10,12 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
 from back.get_auth import get_user
-from back.schemas.user import CredsSchema, UserSchema
+from back.schemas.user import CredsSchema, RegisterSchema, UserSchema
 from back.token import AccessToken, RefreshToken
-from database.database import get_db_session
-from database.models.user import User
+from back.main import Session
+from deva_p1_db.models.user import User
 from database.redis import RedisType, get_redis_client
-from database.repositories.user_repository import UserRepository
+from deva_p1_db.repositories.user_repository import UserRepository
 
 
 def create_code() -> str:
@@ -27,11 +27,12 @@ class AuthController(Controller):
     prefix = "/auth"
     tags = ["auth"]
 
-    def __init__(self, session: AsyncSession = Depends(get_db_session)) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     @post("/refresh")
-    async def refresh(self, response: Response, session: AsyncSession = Depends(get_db_session), refresh_token: str = Cookie(None)): #TODO: refresh secret logic
+    # TODO: refresh secret logic
+    async def refresh(self, response: Response, session: Session, refresh_token: str = Cookie(None)):
         if refresh_token is None:
             raise HTTPException(
                 status_code=401, detail="refresh token doesn't exist")
@@ -53,17 +54,47 @@ class AuthController(Controller):
         ), max_age=Config.access_token_lifetime, httponly=True)
         return {"message": "OK"}
 
+    @post("/register")
+    async def register(self, request: Request, response: Response, register_data: RegisterSchema, redis: Redis = Depends(get_redis_client)):
+        lock_time = await redis.ttl(f"{RedisType.invalidated_access_token}:{register_data.login}")
+        if lock_time > 0:
+            raise HTTPException(
+                status_code=401, detail=f"login locked for {lock_time} seconds")
+        ip = request.client.host  # type: ignore
+        ip_counter = await redis.get(f"{RedisType.incorrect_credentials_ip}:{ip}")
+        if ip_counter is not None:
+            if int(ip_counter) >= Config.ip_buffer:
+                raise HTTPException(
+                    status_code=401, detail=f"too many incorrect credentials for ip: {ip}")
+        else:
+            ip_counter = 0
+        ur = UserRepository(self.session)
+        if register_data.password != register_data.password_repeat:
+            raise HTTPException(
+                status_code=401, detail="passwords do not match")
+        if not await ur.get_by_auth(register_data.login, register_data.password) is None:
+            raise HTTPException(
+                status_code=401, detail="user with this creds already exists")
+        user = await ur.create(register_data.login, register_data.password)
+        if user is None:
+            raise HTTPException(
+                status_code=401, detail="undefined error, try again")
+        return {"message": "OK"}
+
     @post("/login")
     async def login(self, request: Request, response: Response, credentials: CredsSchema, redis: Redis = Depends(get_redis_client)):
         lock_time = await redis.ttl(f"{RedisType.invalidated_access_token}:{credentials.login}")
         if lock_time > 0:
-            raise HTTPException(status_code=401, detail=f"login locked for {lock_time} seconds")
-        ip = request.client.host #type: ignore
+            raise HTTPException(
+                status_code=401, detail=f"login locked for {lock_time} seconds")
+        ip = request.client.host  # type: ignore
         ip_counter = await redis.get(f"{RedisType.incorrect_credentials_ip}:{ip}")
         if ip_counter is not None:
-             if int(ip_counter) >= Config.ip_buffer:
-                  raise HTTPException(status_code=401, detail=f"too many incorrect credentials for ip: {ip}")
-        else: ip_counter = 0
+            if int(ip_counter) >= Config.ip_buffer:
+                raise HTTPException(
+                    status_code=401, detail=f"too many incorrect credentials for ip: {ip}")
+        else:
+            ip_counter = 0
         ur = UserRepository(self.session)
         user = await ur.get_by_auth(credentials.login, credentials.password)
         if user is None:

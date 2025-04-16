@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from config import settings
-from database.models import *
+from deva_p1_db.models import Base
 
 DATABASE_URL = f"postgresql+asyncpg://{settings.db_user}:{settings.db_password}@{settings.db_ip}:{settings.db_port}/{settings.db_name}"
 
@@ -30,6 +30,7 @@ target_metadata = Base.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
