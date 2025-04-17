@@ -18,9 +18,11 @@ from deva_p1_db.models.task import Task
 from deva_p1_db.repositories.file_repository import FileRepository
 from deva_p1_db.repositories.project_repository import ProjectRepository
 from deva_p1_db.repositories.task_repository import TaskRepository
-from database.s3 import S3Type, get_s3_client
+from database.s3 import get_s3_client
+from deva_p1_db.schemas.s3 import S3Type
 from config import settings
 from faststream.rabbit import RabbitBroker
+from deva_p1_db.enums.task_type import TaskType
 
 
 class TaskController(Controller):
@@ -33,7 +35,7 @@ class TaskController(Controller):
     @post("/create")
     async def upload_file(self,
                           project_id: str,
-                          task_type: str,
+                          task_type: TaskType,
                           file: Annotated[UploadFile, File(...)],
                           user: User = Depends(get_user_db),
                           minio_client: Minio = Depends(get_s3_client),
@@ -100,7 +102,7 @@ class TaskController(Controller):
                     detail="server error"
                 )
 
-            await send_message({"task_id": str(task.id)}, broker)
+            await send_message(broker, {"task_id": str(task.id)}, "task")
 
             return {"task_id": str(task.id)}
 
