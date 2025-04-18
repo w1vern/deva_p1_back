@@ -22,7 +22,7 @@ async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: Tas
     await broker.publish(data, queue)
 
 
-@router.broker.subscriber(RabbitQueuesToBack.done_task)
+""" @router.broker.subscriber(RabbitQueuesToBack.done_task)
 async def handle_done_task(msg: TaskToBack, raw_msg: RabbitMessage):
     redis = await get_redis_client()
-    await redis.set(f"{RedisType.task}:{msg.task_id}", msg.done, ex=300)
+    await redis.set(f"{RedisType.task}:{msg.task_id}", msg.done, ex=300) """
