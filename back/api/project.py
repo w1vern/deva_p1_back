@@ -5,13 +5,16 @@ from datetime import datetime, UTC
 from uuid import UUID
 from fastapi import Depends, HTTPException
 from fastapi_controllers import Controller, get, post
+from minio import Minio
 
 from back.db import Session
 from deva_p1_db.models import User, Project
 from deva_p1_db.repositories import ProjectRepository
 
 from back.get_auth import get_user_db
+from back.schemas.file import FileSchema
 from back.schemas.project import CreateProjectSchema, ProjectSchema, EditProjectSchema
+from database.s3 import get_s3_client
 
 
 class ProjectController(Controller):
@@ -54,6 +57,10 @@ class ProjectController(Controller):
                              update_data.description, 
                              datetime.now(UTC).replace(tzinfo=UTC))
         return {"message": "OK"}
+    
+    @get("/get_files")
+    async def get_files_from_project(self, project_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
+        pass
 
 
 
