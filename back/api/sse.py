@@ -29,13 +29,17 @@ class SseController(Controller):
                                 ):
         done_cache_key = f"{RedisType.task}:{task_id}"
         status_cache_key = f"{RedisType.task_status}:{task_id}"
+        prev_state = None
         while True:
             if await request.is_disconnected():
                 break
             cached = await redis.get(status_cache_key)
             if cached:
-                yield TaskSchema(id=task_id, done=False, status=cached)
-                continue
+                if cached != prev_state:
+                    prev_state = cached
+                    yield TaskSchema(id=task_id, done=False, status=cached)
+                    continue
+                
             cached = await redis.get(done_cache_key)
             if cached:
                 yield TaskSchema(id=task_id, done=bool(cached))
