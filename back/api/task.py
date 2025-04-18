@@ -19,6 +19,7 @@ from database.s3 import get_s3_client
 from faststream.rabbit import RabbitBroker
 from deva_p1_db.enums.task_type import TaskType
 from deva_p1_db.schemas.task import TaskToAi
+from deva_p1_db.enums.file_type import FileType
 
 
 class TaskController(Controller):
@@ -56,6 +57,25 @@ class TaskController(Controller):
                 detail="server error"
             )
         await self.session.commit()
+
+
+
+        if task_type == TaskType.summary and not "image_" in file.file_type:
+            raise HTTPException(
+                status_code=400,
+                detail="file must be image"
+            )
+        
+        if task_type == TaskType.transcribe and not "audio_" in file.file_type or "video_" in file.file_type:
+            raise HTTPException(
+                status_code=400,
+                detail="file must be audio or video"
+        )
+        if task_type == TaskType.summary and file.file_type != FileType.text_json.value:
+            raise HTTPException(
+                status_code=400,
+                detail="file must be json"
+            )
 
         await send_message(broker, task_type.value + "_task", TaskToAi(task_id=task.id))
 
