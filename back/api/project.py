@@ -15,8 +15,8 @@ from back.schemas.project import CreateProjectSchema, ProjectSchema, EditProject
 
 
 class ProjectController(Controller):
-    __prefix__ = "/project"
-    __tags__ = ["project"]
+    prefix = "/project"
+    tags = ["project"]
 
     def __init__(self, session: Session) -> None:
         self.session = session

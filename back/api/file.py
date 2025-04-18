@@ -51,8 +51,8 @@ async def download_files(files_id: list[UUID],
 
 
 class FileController(Controller):
-    __prefix__ = "/file"
-    __tags__ = ["file"]
+    prefix = "/file"
+    tags = ["file"]
 
     def __init__(self, session: Session) -> None:
         self.session = session
