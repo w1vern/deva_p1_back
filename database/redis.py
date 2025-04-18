@@ -11,6 +11,7 @@ class RedisType(str, Enum):
     invalidated_access_token = "invalidated_access_token"
     incorrect_credentials_ip = "incorrect_credentials_ip"
     task = "task"
+    task_status = "task_status"
 
 
 def get_redis_client() -> Redis:

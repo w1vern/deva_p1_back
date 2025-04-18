@@ -55,6 +55,7 @@ class TaskController(Controller):
                 status_code=500,
                 detail="server error"
             )
+        await self.session.commit()
 
         await send_message(broker, task_type.value + "_task", TaskToAi(task_id=task.id))
 

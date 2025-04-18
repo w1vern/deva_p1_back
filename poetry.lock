@@ -461,6 +461,20 @@ files = [
 fastapi = "*"
 
 [[package]]
+name = "fastapi-sse"
+version = "1.1.1"
+description = "A tiny library for sending Server-Sent Events (SSE) in FastAPI"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "fastapi_sse-1.1.1-py3-none-any.whl", hash = "sha256:b006a33001f076fccf67957e65b0975c31b91c77cc6c13ee161a9b6c5412d330"},
+    {file = "fastapi_sse-1.1.1.tar.gz", hash = "sha256:d9da5a49cd5a84f0d976f7d593b1e08d6c16012881a1145a7b01e49527e6e355"},
+]
+
+[package.dependencies]
+fastapi = ">=0.51.0"
+
+[[package]]
 name = "faststream"
 version = "0.5.39"
 description = "FastStream: the simplest way to work with a messaging queues"
@@ -1589,4 +1603,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "69c2bbdebe7d69b98493f54b4a7d6821df3d793504121884ff2e035557ffa9a9"
+content-hash = "c7b957ddd54ab2551ee001e4e87648f4ba76c8b8c288c69e280bb2fa000fc30b"

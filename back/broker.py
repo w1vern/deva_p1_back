@@ -1,4 +1,5 @@
 
+import stat
 from faststream.rabbit import RabbitBroker, fastapi, RabbitQueue, RabbitMessage
 
 from back.config import Config
@@ -8,9 +9,6 @@ from deva_p1_db.schemas.task import TaskToAi, TaskToBack
 from deva_p1_db.enums.rabbit import RabbitQueuesToBack
 
 from database.redis import RedisType, get_redis_client
-
-import logging
-
 
 
 RABBIT_URL = f"amqp://{settings.rabbit_user}:{settings.rabbit_password}@{settings.rabbit_ip}:{settings.rabbit_port}/"
@@ -25,10 +23,15 @@ def get_broker() -> RabbitBroker:
 async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: TaskToAi | dict):
     await broker.publish(data, queue)
 
-logger = logging.getLogger(__name__)
 
 @router.subscriber(RabbitQueuesToBack.done_task)
 async def handle_done_task(msg: TaskToBack):
-    logger.info(f"task done: {msg}")
     redis = await get_redis_client()
-    await redis.set(f"{RedisType.task}:{msg.task_id}", str(msg.done), ex=Config.redis_task_status_lifetime)
+    await redis.set(f"{RedisType.task}:{msg.task_id}", int(msg.done), ex=Config.redis_task_status_lifetime)
+
+@router.subscriber(RabbitQueuesToBack.progress_task)
+async def handle_progress_task(msg: TaskToBack):
+    redis = await get_redis_client()
+    if msg.status is None or msg.done is True:
+        return
+    await redis.set(f"{RedisType.task_status}:{msg.task_id}", msg.status, ex=Config.redis_task_status_lifetime)
