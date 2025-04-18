@@ -157,6 +157,6 @@ class FileController(Controller):
         finally:
             await file.close()
 
-    @get("/download_files")
+    @get("/download_files/{files_id}")
     async def download_files(self, files: list[FileSchema] = Depends(download_files)) -> list[FileSchema]:
         return files

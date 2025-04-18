@@ -58,7 +58,7 @@ class ProjectController(Controller):
                              datetime.now(UTC).replace(tzinfo=UTC))
         return {"message": "OK"}
     
-    @get("/get_files")
+    @get("/get_files/{project_id}")
     async def get_files_from_project(self, project_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
         return []
 
