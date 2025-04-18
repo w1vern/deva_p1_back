@@ -26,7 +26,7 @@ class SseController(Controller):
                                 task_id: str,
                                 request: Request,
                                 redis: Redis = Depends(get_redis_client)
-                                ) -> AsyncGenerator[TaskSchema, None]:
+                                )
         done_cache_key = f"{RedisType.task}:{task_id}"
         status_cache_key = f"{RedisType.task_status}:{task_id}"
         while True:
