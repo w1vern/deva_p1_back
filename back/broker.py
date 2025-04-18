@@ -31,4 +31,4 @@ logger = logging.getLogger(__name__)
 async def handle_done_task(msg: TaskToBack):
     logger.info(f"task done: {msg}")
     redis = await get_redis_client()
-    await redis.set(f"{RedisType.task}:{msg.task_id}", msg.done, ex=Config.redis_task_status_lifetime)
+    await redis.set(f"{RedisType.task}:{msg.task_id}", str(msg.done), ex=Config.redis_task_status_lifetime)
