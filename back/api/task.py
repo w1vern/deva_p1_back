@@ -4,13 +4,12 @@ from fastapi_controllers import Controller, get, post
 from fastapi import Depends
 from minio import Minio
 
-from back.api.file import FileController, download_files
+from back.api.file import download_files
 from back.broker import get_broker, send_message
 from back.get_auth import get_user_db
 from back.db import Session
 
 from fastapi import HTTPException
-from minio.error import S3Error
 from deva_p1_db.models.user import User
 from deva_p1_db.repositories.file_repository import FileRepository
 from deva_p1_db.repositories.project_repository import ProjectRepository

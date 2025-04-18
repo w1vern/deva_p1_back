@@ -1,9 +1,13 @@
 
-from faststream.rabbit import RabbitBroker, fastapi, RabbitQueue
+from webbrowser import get
+from faststream.rabbit import RabbitBroker, fastapi, RabbitQueue, RabbitMessage
 
 from config import settings
 
-from deva_p1_db.schemas.task import TaskToAi
+from deva_p1_db.schemas.task import TaskToAi, TaskToBack
+from deva_p1_db.enums.rabbit import RabbitQueuesToBack
+
+from database.redis import RedisType, get_redis_client
 
 RABBIT_URL = f"amqp://{settings.rabbit_user}:{settings.rabbit_password}@{settings.rabbit_ip}:{settings.rabbit_port}/"
 
@@ -16,3 +20,9 @@ def get_broker() -> RabbitBroker:
 
 async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: TaskToAi | dict):
     await broker.publish(data, queue)
+
+
+@router.broker.subscriber(RabbitQueuesToBack.done_task)
+async def handle_done_task(msg: TaskToBack, raw_msg: RabbitMessage):
+    redis = await get_redis_client()
+    await redis.set(f"{RedisType.task}:{msg.task_id}", msg.done, ex=300)
