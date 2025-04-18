@@ -41,7 +41,7 @@ class ProjectController(Controller):
         return {"message": "OK"}
 
     @get("/list")
-    async def list(self, user: User = Depends(get_user_db)) -> list[ProjectSchema]:
+    async def list_projects(self, user: User = Depends(get_user_db)) -> list[ProjectSchema]:
         projects = await self.pr.get_by_user(user)
         return [ProjectSchema.from_db(p) for p in projects]
 
@@ -60,7 +60,7 @@ class ProjectController(Controller):
     
     @get("/get_files")
     async def get_files_from_project(self, project_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
-        pass
+        return []
 
 
 
