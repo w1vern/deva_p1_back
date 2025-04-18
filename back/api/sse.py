@@ -6,7 +6,6 @@ from fastapi_controllers import Controller, get
 from fastapi import Depends, Request
 
 from redis.asyncio import Redis
-from redis.asyncio.client import PubSub
 
 from back.config import Config
 from back.db import Session
@@ -27,40 +26,17 @@ class SseController(Controller):
         redis: Redis = Depends(get_redis_client)
     ):
         cache_key = f"{RedisType.task}:{task_id}"
-        channel = RedisType.task.value
 
         async def event_stream() -> AsyncGenerator[str, None]:
-            cached = await redis.get(cache_key)
-            if cached:
-                yield f"data: {cached.decode()}\n\n"
-                return
+            while True:
+                if await request.is_disconnected():
+                    break
+                cached = await redis.get(cache_key)
+                if cached:
+                    yield f"data: {cached}\n\n"
+                    break
+                await asyncio.sleep(Config.redis_task_polling_time)
 
-            pubsub: PubSub = redis.pubsub()
-            await pubsub.subscribe(channel)
-
-            try:
-                while True:
-                    if await request.is_disconnected():
-                        break
-
-                    message = await pubsub.get_message(
-                        ignore_subscribe_messages=True, timeout=Config.redis_pubsub_check_time
-                    )
-                    if message:
-                        try:
-                            data = json.loads(message["data"])
-                            if data.get("task_id") == str(task_id):
-                                await redis.set(cache_key, json.dumps(data), ex=300)
-                                yield f"data: {json.dumps(data)}\n\n"
-                                break
-                        except (json.JSONDecodeError, TypeError):
-                            continue
-
-                    await asyncio.sleep(Config.redis_pubsub_check_timeout)
-
-            finally:
-                await pubsub.unsubscribe(channel)
-                await pubsub.close()
 
         response = StreamingResponse(event_stream(), media_type="text/event-stream")
         response.headers["X-Accel-Buffering"] = "no"

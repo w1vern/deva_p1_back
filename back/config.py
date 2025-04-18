@@ -14,6 +14,6 @@ class Config:
 	ip_buffer = 10
 	ip_buffer_lifetime = 60*60*24
 	algorithm = "HS256"
-	redis_task_polling_rate = 1
+	redis_task_polling_time = 1
 	redis_task_status_lifetime = 60 * 10
 	minio_url_live_time = 10*60

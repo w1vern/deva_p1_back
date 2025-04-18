@@ -1,5 +1,4 @@
 
-from webbrowser import get
 from faststream.rabbit import RabbitBroker, fastapi, RabbitQueue, RabbitMessage
 
 from config import settings
@@ -22,7 +21,7 @@ async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: Tas
     await broker.publish(data, queue)
 
 
-""" @router.broker.subscriber(RabbitQueuesToBack.done_task)
-async def handle_done_task(msg: TaskToBack, raw_msg: RabbitMessage):
+@router.subscriber(RabbitQueuesToBack.done_task)
+async def handle_done_task(msg: TaskToBack):
     redis = await get_redis_client()
-    await redis.set(f"{RedisType.task}:{msg.task_id}", msg.done, ex=300) """
+    await redis.set(f"{RedisType.task}:{msg.task_id}", msg.done, ex=300)

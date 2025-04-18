@@ -30,8 +30,8 @@ class AuthController(Controller):
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    @post("/refresh")
     # TODO: refresh secret logic
+    @post("/refresh")
     async def refresh(self, response: Response, session: Session, refresh_token: str = Cookie(None)):
         if refresh_token is None:
             raise HTTPException(
