@@ -1,5 +1,4 @@
 
-from io import BytesIO
 from uuid import UUID
 from fastapi_controllers import Controller, post
 from fastapi import Depends
@@ -9,17 +8,13 @@ from back.broker import get_broker, send_message
 from back.get_auth import get_user_db
 from back.db import Session
 
-from fastapi import File, UploadFile, HTTPException
+from fastapi import HTTPException
 from minio.error import S3Error
-import mimetypes
-from typing import Annotated
 from deva_p1_db.models.user import User
-from deva_p1_db.models.task import Task
 from deva_p1_db.repositories.file_repository import FileRepository
 from deva_p1_db.repositories.project_repository import ProjectRepository
 from deva_p1_db.repositories.task_repository import TaskRepository
 from database.s3 import get_s3_client
-from deva_p1_db.schemas.s3 import S3Type
 from config import settings
 from faststream.rabbit import RabbitBroker
 from deva_p1_db.enums.task_type import TaskType
@@ -31,85 +26,61 @@ class TaskController(Controller):
 
     def __init__(self, session: Session) -> None:
         self.session = session
+        self.tr = TaskRepository(self.session)
+        self.fr = FileRepository(self.session)
 
     @post("/create")
-    async def upload_file(self,
+    async def create_task(self,
                           project_id: str,
                           task_type: TaskType,
-                          file: Annotated[UploadFile, File(...)],
+                          file_id: UUID,
                           user: User = Depends(get_user_db),
-                          minio_client: Minio = Depends(get_s3_client),
                           broker: RabbitBroker = Depends(get_broker)):
-        try:
-            pr = ProjectRepository(self.session)
-            project = await pr.get_by_id(UUID(project_id))
-            if project is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="project not found"
-                )
-            if not minio_client.bucket_exists(settings.minio_bucket):
-                try:
-                    minio_client.make_bucket(settings.minio_bucket)
-                except S3Error as e:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"bucket creation error: {e.message}"
-                    )
-            if file.filename is None:
-                file.filename = ""
+        pass
+        # pr = ProjectRepository(self.session)
+        # project = await pr.get_by_id(UUID(project_id))
+        # if project is None:
+        #     raise HTTPException(
+        #         status_code=404,
+        #         detail="project not found"
+        #     )
+        
 
-            content_type = (
-                mimetypes.guess_type(file.filename)[0]
-                or S3Type.undefined.value
-            )
+        # task = await self.tr.create(
+        #     task_type=task_type,
+        #     project=project,
+        #     user=user,
+        #     origin_file=db_file
+        # )
+        # if task is None:
+        #     raise HTTPException(
+        #         status_code=500,
+        #         detail="server error"
+        #     )
 
-            file_data = await file.read()
-            file_size = len(file_data)
+        # await send_message(broker, {"task_id": str(task.id)}, "task")
 
-            fr = FileRepository(self.session)
+        # return {"task_id": str(task.id)}
 
-            db_file = await fr.create(
-                user_file_name=file.filename,
-                file_type=content_type,
-                project=project
-            )
+        
 
-            if db_file is None:
-                raise HTTPException(
-                    status_code=500,
-                    detail="server error"
-                )
-
-            owr = minio_client.put_object(
-                bucket_name=settings.minio_bucket,
-                object_name=str(db_file.id),
-                data=BytesIO(file_data),
-                length=file_size,
-                content_type=content_type
-            )
-
-            tr = TaskRepository(self.session)
-            task = await tr.create(
-                task_type=task_type,
-                project=project,
-                user=user,
-                origin_file=db_file
-            )
-            if task is None:
-                raise HTTPException(
-                    status_code=500,
-                    detail="server error"
-                )
-
-            await send_message(broker, {"task_id": str(task.id)}, "task")
-
-            return {"task_id": str(task.id)}
-
-        except S3Error as e:
+    @post("/get/{task_id}")
+    async def get_file(self, task_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)):
+        task = await self.tr.get_by_id(UUID(task_id))
+        if task is None:
             raise HTTPException(
-                status_code=500,
-                detail=f"MinIO error: {e.message}"
+                status_code=404,
+                detail="task not found"
             )
-        finally:
-            await file.close()
+        if task.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="permission denied"
+            )
+        if task.origin_file is None:
+            raise HTTPException(
+                status_code=404,
+                detail="file not found"
+            )
+        
+        pass

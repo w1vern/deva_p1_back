@@ -5,6 +5,8 @@ from fastapi import APIRouter
 from .auth import AuthController
 from .sse import SseController
 from .task import TaskController
+from .file import FileController
+from .project import ProjectController
 
 
 
