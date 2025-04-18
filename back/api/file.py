@@ -15,7 +15,7 @@ from deva_p1_db.models import User
 
 from back.get_auth import get_user_db
 from back.schemas.file import FileSchema
-from deva_p1_db.schemas.s3 import S3Type
+from deva_p1_db.enums.s3_type import S3Type
 
 from config import settings
 from database.s3 import get_s3_client
