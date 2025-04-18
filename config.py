@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     db_password: str = "1234"
     db_ip: str = "postgres"
     db_port: int = 5432
-    db_name: str = "vpn_db"
+    db_name: str = "deva_p1_db"
     redis_ip: str = "redis"
     redis_port: int = 6379
     rabbit_user: str = "guest"
@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     secret: str = "YOUR_SECRET"
     minio_ip: str = "minio"
     minio_port: int = 9000
-    minio_access_key: str = "minioadmin"
-    minio_secret_key: str = "minioadmin"
+    minio_access_key: str = "MINIO_ACCESS_KEY"
+    minio_secret_key: str = "NINIO_SECRET_KEY"
     minio_bucket: str = "my-bucket"
     minio_secure: bool = False
     
