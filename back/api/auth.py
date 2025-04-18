@@ -74,7 +74,7 @@ class AuthController(Controller):
                 status_code=401, detail="passwords do not match")
         if not await ur.get_by_auth(register_data.login, register_data.password) is None:
             raise HTTPException(
-                status_code=401, detail="user with this creds already exists")
+                status_code=401, detail="user with this creds is already exists")
         user = await ur.create(register_data.login, register_data.password)
         if user is None:
             raise HTTPException(

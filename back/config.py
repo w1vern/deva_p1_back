@@ -16,3 +16,4 @@ class Config:
 	algorithm = "HS256"
 	redis_pubsub_check_time = 0.5
 	redis_pubsub_check_timeout = 1
+	minio_url_live_time = 10*60

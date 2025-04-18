@@ -1,9 +1,10 @@
 
 from uuid import UUID
-from fastapi_controllers import Controller, post
+from fastapi_controllers import Controller, get, post
 from fastapi import Depends
 from minio import Minio
 
+from back.api.file import FileController, download_files
 from back.broker import get_broker, send_message
 from back.get_auth import get_user_db
 from back.db import Session
@@ -14,10 +15,11 @@ from deva_p1_db.models.user import User
 from deva_p1_db.repositories.file_repository import FileRepository
 from deva_p1_db.repositories.project_repository import ProjectRepository
 from deva_p1_db.repositories.task_repository import TaskRepository
+from back.schemas.file import FileSchema
 from database.s3 import get_s3_client
-from config import settings
 from faststream.rabbit import RabbitBroker
 from deva_p1_db.enums.task_type import TaskType
+from deva_p1_db.schemas.task import TaskToAi
 
 
 class TaskController(Controller):
@@ -31,41 +33,36 @@ class TaskController(Controller):
 
     @post("/create")
     async def create_task(self,
-                          project_id: str,
                           task_type: TaskType,
                           file_id: UUID,
                           user: User = Depends(get_user_db),
                           broker: RabbitBroker = Depends(get_broker)):
-        pass
-        # pr = ProjectRepository(self.session)
-        # project = await pr.get_by_id(UUID(project_id))
-        # if project is None:
-        #     raise HTTPException(
-        #         status_code=404,
-        #         detail="project not found"
-        #     )
-        
+        file = await self.fr.get_by_id(file_id)
+        if file is None:
+            raise HTTPException(
+                status_code=404,
+                detail="file not found"
+            )
+        project = file.project
 
-        # task = await self.tr.create(
-        #     task_type=task_type,
-        #     project=project,
-        #     user=user,
-        #     origin_file=db_file
-        # )
-        # if task is None:
-        #     raise HTTPException(
-        #         status_code=500,
-        #         detail="server error"
-        #     )
+        task = await self.tr.create(
+            task_type=task_type,
+            project=project,
+            user=user,
+            origin_file=file
+        )
+        if task is None:
+            raise HTTPException(
+                status_code=500,
+                detail="server error"
+            )
 
-        # await send_message(broker, {"task_id": str(task.id)}, "task")
+        await send_message(broker, task_type.value + "_task", TaskToAi(task_id=task.id))
 
-        # return {"task_id": str(task.id)}
+        return {"task_id": str(task.id)}
 
-        
-
-    @post("/get/{task_id}")
-    async def get_file(self, task_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)):
+    @get("/get/{task_id}")
+    async def get_files_from_task(self, task_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
         task = await self.tr.get_by_id(UUID(task_id))
         if task is None:
             raise HTTPException(
@@ -77,10 +74,7 @@ class TaskController(Controller):
                 status_code=403,
                 detail="permission denied"
             )
-        if task.origin_file is None:
-            raise HTTPException(
-                status_code=404,
-                detail="file not found"
-            )
+        files = await self.fr.get_by_task(task)
+        files_id = [file.id for file in files]
+        return await download_files(files_id, self.session, user, minio_client)
         
-        pass
