@@ -1,6 +1,7 @@
 
 import random
 from datetime import UTC, datetime
+from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Request, Response
 from fastapi_controllers import Controller, get, post
@@ -9,7 +10,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
-from back.get_auth import get_user
+from back.get_auth import get_user, get_user_db
 from back.schemas.user import CredsSchema, RegisterSchema, UserSchema
 from back.token import AccessToken, RefreshToken
 from back.db import Session
@@ -18,19 +19,14 @@ from database.redis import RedisType, get_redis_client
 from deva_p1_db.repositories.user_repository import UserRepository
 
 
-def create_code() -> str:
-    tmp_code = str(random.randrange(start=0, stop=1000000))
-    return "0"*(6-len(tmp_code)) + tmp_code
-
-
 class AuthController(Controller):
     prefix = "/auth"
     tags = ["auth"]
 
     def __init__(self, session: Session) -> None:
         self.session = session
+        self.ur = UserRepository(self.session)
 
-    # TODO: refresh secret logic
     @post("/refresh")
     async def refresh(self, response: Response, session: Session, refresh_token: str = Cookie(None)):
         if refresh_token is None:
@@ -41,8 +37,7 @@ class AuthController(Controller):
         if refresh.created_date > current_time or refresh.created_date + refresh.lifetime < current_time:
             raise HTTPException(
                 status_code=401, detail="refresh token expired")
-        ur = UserRepository(self.session)
-        user = await ur.get_by_id(refresh.user_id)
+        user = await self.ur.get_by_id(refresh.user_id)
         if user is None:
             raise HTTPException(
                 status_code=401, detail="incorrect refresh token")
@@ -68,14 +63,13 @@ class AuthController(Controller):
                     status_code=401, detail=f"too many incorrect credentials for ip: {ip}")
         else:
             ip_counter = 0
-        ur = UserRepository(self.session)
         if register_data.password != register_data.password_repeat:
             raise HTTPException(
                 status_code=401, detail="passwords do not match")
-        if not await ur.get_by_auth(register_data.login, register_data.password) is None:
+        if not await self.ur.get_by_auth(register_data.login, register_data.password) is None:
             raise HTTPException(
                 status_code=401, detail="user with this creds is already exists")
-        user = await ur.create(register_data.login, register_data.password)
+        user = await self.ur.create(register_data.login, register_data.password)
         if user is None:
             raise HTTPException(
                 status_code=401, detail="undefined error, try again")
@@ -95,8 +89,7 @@ class AuthController(Controller):
                     status_code=401, detail=f"too many incorrect credentials for ip: {ip}")
         else:
             ip_counter = 0
-        ur = UserRepository(self.session)
-        user = await ur.get_by_auth(credentials.login, credentials.password)
+        user = await self.ur.get_by_auth(credentials.login, credentials.password)
         if user is None:
             await redis.set(f"{RedisType.incorrect_credentials_ip}:{ip}", int(ip_counter) + 1, ex=Config.ip_buffer_lifetime)
             raise HTTPException(status_code=401, detail="invalid credentials")
@@ -114,6 +107,25 @@ class AuthController(Controller):
             raise HTTPException(status_code=401, detail="unauthorized")
         response.delete_cookie(key="refresh_token")
         response.delete_cookie(key="access_token")
+        return {"message": "OK"}
+
+    @post("/logout_all")
+    async def logout_all(self, response: Response, user: User = Depends(get_user_db)):
+        await self.ur.update_secret(user)
+        response.delete_cookie(key="refresh_token")
+        response.delete_cookie(key="access_token")
+        return {"message": "OK"}
+
+    @post("/update_credentials")
+    async def update_creds(self,
+                           new_login: Optional[str] = None,
+                           new_password: Optional[str] = None,
+                           new_password_repeat: Optional[str] = None,
+                           user: User = Depends(get_user_db)):
+        if new_password != new_password_repeat:
+            raise HTTPException(
+                status_code=401, detail="passwords do not match")
+        await self.ur.update_credentials(user, new_login, new_password)
         return {"message": "OK"}
 
     @get("/user_info")

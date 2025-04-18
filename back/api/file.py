@@ -7,6 +7,7 @@ from typing import Annotated
 from uuid import UUID
 from fastapi_controllers import Controller, get, post
 from fastapi import Depends, File, HTTPException, UploadFile
+from back.config import Config
 from minio import Minio, S3Error
 
 from back.db import Session
@@ -45,7 +46,7 @@ async def download_files(files_id: list[UUID],
         files[-1].download_url = minio_client.presigned_get_object(
             bucket_name=settings.minio_bucket,
             object_name=str(file_id),
-            expires=timedelta(seconds=10*60)
+            expires=timedelta(seconds=Config.minio_url_live_time)
         )
     return files
 
