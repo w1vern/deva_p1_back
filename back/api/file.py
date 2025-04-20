@@ -26,7 +26,6 @@ from zipfile import ZIP_DEFLATED, ZipFile
 import shutil
 
 
-
 class FileController(Controller):
     prefix = "/file"
     tags = ["file"]
@@ -164,7 +163,7 @@ class FileController(Controller):
                 response,
                 media_type="application/octet-stream",
                 headers={"Content-Disposition": f'attachment; filename="{files[0].user_file_name}"'})
-        
+
         zip_stream = BytesIO()
         with ZipFile(zip_stream, "w", ZIP_DEFLATED) as zip_file:
             for file in files:
@@ -181,9 +180,9 @@ class FileController(Controller):
         return StreamingResponse(
             zip_stream,
             media_type="application/zip",
-            headers={"Content-Disposition": f'attachment; filename="{user.login}.zip"'}
+            headers={
+                "Content-Disposition": f'attachment; filename="{user.login}.zip"'}
         )
-        
 
     @post("/get_download_urls")
     async def get_download_urls(self, files_id: list[str], user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
@@ -204,6 +203,9 @@ class FileController(Controller):
             files[-1].download_url = minio_client.presigned_get_object(
                 bucket_name=settings.minio_bucket,
                 object_name=str(file_id),
-                expires=timedelta(seconds=Config.minio_url_live_time)
+                expires=timedelta(seconds=Config.minio_url_live_time),
+                response_headers={
+                    "response-content-disposition": f'attachment; filename="{file.user_file_name}"'
+                }
             )
         return files
