@@ -62,7 +62,7 @@ class TaskController(Controller):
                 detail="file must be image"
             )
         
-        if task_type == TaskType.transcribe and not "audio_" in file.file_type or "video_" in file.file_type:
+        if task_type == TaskType.transcribe and not ("audio_" in file.file_type or "video_" in file.file_type):
             raise HTTPException(
                 status_code=400,
                 detail="file must be audio or video"
