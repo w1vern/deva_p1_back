@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Optional
 
 from fastapi import Cookie, Depends, HTTPException, Request, Response
-from fastapi_controllers import Controller, get, post
+from fastapi_controllers import Controller, get, patch, post
 
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,7 +116,7 @@ class AuthController(Controller):
         response.delete_cookie(key="access_token")
         return {"message": "OK"}
 
-    @post("/update_credentials")
+    @patch("/update_credentials")
     async def update_creds(self,
                            new_login: Optional[str] = None,
                            new_password: Optional[str] = None,

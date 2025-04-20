@@ -9,7 +9,7 @@ from minio import Minio
 
 from back.db import Session
 from deva_p1_db.models import User, Project
-from deva_p1_db.repositories import ProjectRepository
+from deva_p1_db.repositories import ProjectRepository, FileRepository
 
 from back.get_auth import get_user_db
 from back.schemas.file import FileSchema
@@ -24,6 +24,7 @@ class ProjectController(Controller):
     def __init__(self, session: Session) -> None:
         self.session = session
         self.pr = ProjectRepository(self.session)
+        self.fr = FileRepository(self.session)
 
     @post("/create")
     async def create(self, create_data: CreateProjectSchema, user: User = Depends(get_user_db)) -> ProjectSchema:
@@ -60,7 +61,13 @@ class ProjectController(Controller):
     
     @get("/get_files/{project_id}")
     async def get_files_from_project(self, project_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
-        return []
+        project = await self.pr.get_by_id(UUID(project_id))
+        if project is None:
+            raise HTTPException(status_code=404, detail="project not found")
+        if project.holder_id != user.id:
+            raise HTTPException(status_code=403, detail="permission denied")
+        files = await self.fr.get_by_project(project)
+        return [FileSchema.from_db(f) for f in files]
 
 
 

@@ -23,6 +23,8 @@ from deva_p1_db.enums.file_type import FileType
 from config import settings
 from database.s3 import get_s3_client
 from zipfile import ZIP_DEFLATED, ZipFile
+import shutil
+
 
 
 class FileController(Controller):
@@ -170,7 +172,8 @@ class FileController(Controller):
                     bucket_name=settings.minio_bucket,
                     object_name=str(file.id),
                 )
-                zip_file.writestr(file.user_file_name, obj.read())
+                with zip_file.open(file.user_file_name, "w") as dest_file:
+                    shutil.copyfileobj(obj, dest_file, length=1024*64)
                 obj.close()
                 obj.release_conn()
 
