@@ -2,9 +2,7 @@
 from uuid import UUID
 from fastapi_controllers import Controller, get, post
 from fastapi import Depends
-from minio import Minio
 
-from back.api.file import download_files
 from back.broker import get_broker, send_message
 from back.get_auth import get_user_db
 from back.db import Session
@@ -12,10 +10,8 @@ from back.db import Session
 from fastapi import HTTPException
 from deva_p1_db.models.user import User
 from deva_p1_db.repositories.file_repository import FileRepository
-from deva_p1_db.repositories.project_repository import ProjectRepository
 from deva_p1_db.repositories.task_repository import TaskRepository
 from back.schemas.file import FileSchema
-from database.s3 import get_s3_client
 from faststream.rabbit import RabbitBroker
 from deva_p1_db.enums.task_type import TaskType
 from deva_p1_db.schemas.task import TaskToAi
@@ -82,7 +78,10 @@ class TaskController(Controller):
         return {"task_id": str(task.id)}
 
     @get("/get/{task_id}")
-    async def get_files_from_task(self, task_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
+    async def get_files_from_task(self, 
+                                  task_id: str, 
+                                  user: User = Depends(get_user_db), 
+                                  ) -> list[FileSchema]:
         task = await self.tr.get_by_id(UUID(task_id))
         if task is None:
             raise HTTPException(
@@ -95,6 +94,5 @@ class TaskController(Controller):
                 detail="permission denied"
             )
         files = await self.fr.get_by_task(task)
-        files_id = [file.id for file in files]
-        return await download_files(files_id, self.session, user, minio_client)
+        return [FileSchema.from_db(f) for f in files]
         

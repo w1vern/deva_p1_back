@@ -4,7 +4,7 @@
 from datetime import datetime, UTC
 from uuid import UUID
 from fastapi import Depends, HTTPException
-from fastapi_controllers import Controller, get, post
+from fastapi_controllers import Controller, get, post, delete, patch
 from minio import Minio
 
 from back.db import Session
@@ -32,7 +32,7 @@ class ProjectController(Controller):
             raise HTTPException(status_code=500, detail="project creation error")
         return ProjectSchema.from_db(project)
 
-    @post("/delete")
+    @delete("/")
     async def delete(self, project_id: str, user: User = Depends(get_user_db)):
         project = await self.pr.get_by_id(UUID(project_id))
         if project is None:
@@ -45,7 +45,7 @@ class ProjectController(Controller):
         projects = await self.pr.get_by_user(user)
         return [ProjectSchema.from_db(p) for p in projects]
 
-    @post("/update")
+    @patch("/")
     async def update(self, update_data: EditProjectSchema, user: User = Depends(get_user_db)):
         project = await self.pr.get_by_id(UUID(update_data.id))
         if project is None:

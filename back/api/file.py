@@ -5,6 +5,7 @@ from io import BytesIO
 import mimetypes
 from typing import Annotated
 from uuid import UUID
+from fastapi.responses import StreamingResponse
 from fastapi_controllers import Controller, get, post
 from fastapi import Depends, File, HTTPException, UploadFile
 from back.config import Config
@@ -13,7 +14,7 @@ from minio import Minio, S3Error
 from back.db import Session
 
 from deva_p1_db.repositories import FileRepository, ProjectRepository
-from deva_p1_db.models import User
+from deva_p1_db.models import User, File as FileDb
 
 from back.get_auth import get_user_db
 from back.schemas.file import FileSchema
@@ -21,34 +22,7 @@ from deva_p1_db.enums.file_type import FileType
 
 from config import settings
 from database.s3 import get_s3_client
-
-
-async def download_files(files_id: list[UUID],
-                         session: Session,
-                         user: User = Depends(get_user_db),
-                         minio_client: Minio = Depends(get_s3_client)
-                         ) -> list[FileSchema]:
-    files: list[FileSchema] = []
-    fr = FileRepository(session)
-    for file_id in files_id:
-        file = await fr.get_by_id(file_id)
-        if file is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"file {file_id} not found"
-            )
-        if file.user_id != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="permission denied"
-            )
-        files.append(FileSchema.from_db(file))
-        files[-1].download_url = minio_client.presigned_get_object(
-            bucket_name=settings.minio_bucket,
-            object_name=str(file_id),
-            expires=timedelta(seconds=Config.minio_url_live_time)
-        )
-    return files
+from zipfile import ZIP_DEFLATED, ZipFile
 
 
 class FileController(Controller):
@@ -159,5 +133,74 @@ class FileController(Controller):
             await file.close()
 
     @post("/download_files")
-    async def download_files(self, files: list[FileSchema] = Depends(download_files)) -> list[FileSchema]:
+    async def download_files(self, files_id: list[str], user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)):
+        files: list[FileDb] = []
+        for file_id in files_id:
+            file = await self.fr.get_by_id(UUID(file_id))
+            if file is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"file {file_id} not found"
+                )
+            if file.user_id != user.id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="permission denied"
+                )
+            files.append(file)
+        if len(files) == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="files not found"
+            )
+        if len(files) == 1:
+            response = minio_client.get_object(
+                bucket_name=settings.minio_bucket,
+                object_name=str(files[0].id),
+            )
+            return StreamingResponse(
+                response,
+                media_type="application/octet-stream",
+                headers={"Content-Disposition": f'attachment; filename="{files[0].user_file_name}"'})
+        
+        zip_stream = BytesIO()
+        with ZipFile(zip_stream, "w", ZIP_DEFLATED) as zip_file:
+            for file in files:
+                obj = minio_client.get_object(
+                    bucket_name=settings.minio_bucket,
+                    object_name=str(file.id),
+                )
+                zip_file.writestr(file.user_file_name, obj.read())
+                obj.close()
+                obj.release_conn()
+
+        zip_stream.seek(0)
+        return StreamingResponse(
+            zip_stream,
+            media_type="application/zip",
+            headers={"Content-Disposition": f'attachment; filename="{user.login}.zip"'}
+        )
+        
+
+    @post("/get_download_urls")
+    async def get_download_urls(self, files_id: list[str], user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileSchema]:
+        files: list[FileSchema] = []
+        for file_id in files_id:
+            file = await self.fr.get_by_id(UUID(file_id))
+            if file is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"file {file_id} not found"
+                )
+            if file.user_id != user.id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="permission denied"
+                )
+            files.append(FileSchema.from_db(file))
+            files[-1].download_url = minio_client.presigned_get_object(
+                bucket_name=settings.minio_bucket,
+                object_name=str(file_id),
+                expires=timedelta(seconds=Config.minio_url_live_time)
+            )
         return files
