@@ -1,6 +1,7 @@
 
 
 from typing import Optional
+from uuid import UUID
 from pydantic import BaseModel
 from deva_p1_db.models import File
 
@@ -12,14 +13,20 @@ class FileSchema(BaseModel):
     created_date: str
     last_modified_date: str
     download_url: Optional[str] = None
+    origin_file_id: Optional[str]
 
     @classmethod
     def from_db(cls, file: File):
+        if file.task_id == UUID(int=0):
+            origin_file_id = None
+        else:
+            origin_file_id = str(file.task.origin_file_id)
         return cls(id=str(file.id), 
                    file_type=file.file_type, 
                    name=file.user_file_name,
                    created_date=file.created_date.isoformat(),
-                   last_modified_date=file.last_modified_date.isoformat()
+                   last_modified_date=file.last_modified_date.isoformat(),
+                   origin_file_id=origin_file_id
                    )
 
 

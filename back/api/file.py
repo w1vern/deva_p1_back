@@ -7,7 +7,7 @@ from typing import Annotated
 from uuid import UUID
 from fastapi.responses import StreamingResponse
 from fastapi_controllers import Controller, get, post
-from fastapi import Depends, File, HTTPException, UploadFile
+from fastapi import Depends, File, HTTPException, Request, UploadFile
 from back.config import Config
 from minio import Minio, S3Error
 
@@ -16,14 +16,16 @@ from back.db import Session
 from deva_p1_db.repositories import FileRepository, ProjectRepository
 from deva_p1_db.models import User, File as FileDb
 
-from back.get_auth import get_user_db
+from back.get_auth import get_user, get_user_db
 from back.schemas.file import FileSchema, FileDownloadURLSchema
 from deva_p1_db.enums.file_type import FileType
 
+from back.schemas.user import UserSchema
 from config import settings
 from database.s3 import get_s3_client
 from zipfile import ZIP_DEFLATED, ZipFile
 import shutil
+import re
 
 
 class FileController(Controller):
@@ -241,3 +243,42 @@ class FileController(Controller):
             ),
             media_type="video/mp4",
         )
+    
+    @get("/video/{file_id}")
+    async def stream_video(self, file_id: str, request: Request, user: UserSchema = Depends(get_user), minio_client: Minio = Depends(get_s3_client)):
+        range_header = request.headers.get("range")
+        if range_header is None:
+            raise HTTPException(status_code=416, detail="Range header required")
+
+        match = re.match(r"bytes=(\d+)-(\d*)", range_header)
+        if not match:
+            raise HTTPException(status_code=416, detail="Invalid Range header")
+
+        start = int(match.group(1))
+        end = int(match.group(2)) if match.group(2) else None
+
+        stat = minio_client.stat_object(settings.minio_bucket, file_id)
+        file_size = stat.size
+        if file_size is None:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        if end is None or end >= file_size:
+            end = file_size - 1
+
+        content_length = end - start + 1
+
+        response = minio_client.get_object(
+            settings.minio_bucket,
+            file_id,
+            offset=start,
+            length=content_length
+        )
+
+        headers = {
+            "Content-Range": f"bytes {start}-{end}/{file_size}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(content_length),
+            "Content-Type": "video/mp4",
+        }
+
+        return StreamingResponse(response, status_code=206, headers=headers)
