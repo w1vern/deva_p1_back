@@ -13,7 +13,7 @@ from back.config import Config
 from back.get_auth import get_user, get_user_db
 from back.schemas.user import CredsSchema, RegisterSchema, UserSchema
 from back.token import AccessToken, RefreshToken
-from back.db import Session
+from database.db import Session
 from deva_p1_db.models.user import User
 from database.redis import RedisType, get_redis_client
 from deva_p1_db.repositories.user_repository import UserRepository

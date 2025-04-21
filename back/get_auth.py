@@ -5,7 +5,7 @@ from redis.asyncio import Redis
 
 from back.token import AccessToken
 from back.schemas.user import UserSchema
-from back.db import Session 
+from database.db import Session 
 from deva_p1_db.models.user import User
 from database.redis import RedisType, get_redis_client
 from deva_p1_db.repositories.user_repository import UserRepository

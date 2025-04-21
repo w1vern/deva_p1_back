@@ -395,7 +395,7 @@ werkzeug = "^3.1.3"
 type = "git"
 url = "https://github.com/w1vern/deva_p1_db"
 reference = "HEAD"
-resolved_reference = "2ac154c73a344e50b5f26d578c0989ebaac14138"
+resolved_reference = "f53972fe2585e5cfbb936f56c718faed99a18b34"
 
 [[package]]
 name = "exceptiongroup"

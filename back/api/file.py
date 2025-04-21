@@ -11,7 +11,7 @@ from fastapi import Depends, File, HTTPException, Request, UploadFile
 from back.config import Config
 from minio import Minio, S3Error
 
-from back.db import Session
+from database.db import Session
 
 from deva_p1_db.repositories import FileRepository, ProjectRepository
 from deva_p1_db.models import User, File as FileDb

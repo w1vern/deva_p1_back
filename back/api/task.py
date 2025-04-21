@@ -5,7 +5,7 @@ from fastapi import Depends
 
 from back.broker import get_broker, send_message
 from back.get_auth import get_user_db
-from back.db import Session
+from database.db import Session
 
 from fastapi import HTTPException
 from deva_p1_db.models.user import User

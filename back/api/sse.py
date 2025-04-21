@@ -8,7 +8,7 @@ from fastapi import Depends, Request
 from redis.asyncio import Redis
 
 from back.config import Config
-from back.db import Session
+from database.db import Session
 from back.schemas.task import TaskSchema
 from database.redis import get_redis_client, RedisType
 

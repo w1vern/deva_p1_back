@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException
 from fastapi_controllers import Controller, get, post, delete, patch
 from minio import Minio
 
-from back.db import Session
+from database.db import Session
 from deva_p1_db.models import User, Project
 from deva_p1_db.repositories import ProjectRepository, FileRepository, TaskRepository
 
