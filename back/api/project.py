@@ -9,11 +9,12 @@ from minio import Minio
 
 from back.db import Session
 from deva_p1_db.models import User, Project
-from deva_p1_db.repositories import ProjectRepository, FileRepository
+from deva_p1_db.repositories import ProjectRepository, FileRepository, TaskRepository
 
 from back.get_auth import get_user_db
 from back.schemas.file import FileSchema
 from back.schemas.project import CreateProjectSchema, ProjectSchema, EditProjectSchema
+from back.schemas.task import ActiveTaskSchema
 from database.s3 import get_s3_client
 
 
@@ -25,6 +26,7 @@ class ProjectController(Controller):
         self.session = session
         self.pr = ProjectRepository(self.session)
         self.fr = FileRepository(self.session)
+        self.tr = TaskRepository(self.session)
 
     @post("/create")
     async def create(self, create_data: CreateProjectSchema, user: User = Depends(get_user_db)) -> ProjectSchema:
@@ -68,6 +70,20 @@ class ProjectController(Controller):
             raise HTTPException(status_code=403, detail="permission denied")
         files = await self.fr.get_by_project(project)
         return [FileSchema.from_db(f) for f in files]
+    
+    @get("get_active_tasks/{project_id}")
+    async def get_active_tasks(self, project_id: str, user: User = Depends(get_user_db)) -> list[ActiveTaskSchema]:
+        project = await self.pr.get_by_id(UUID(project_id))
+        if project is None:
+            raise HTTPException(status_code=404, detail="project not found")
+        if project.holder_id != user.id:
+            raise HTTPException(status_code=403, detail="permission denied")
+        return [ActiveTaskSchema.from_db(task) for task in (await self.tr.get_by_project_and_user(project, user))]
+        
+
+            
+
+    
 
 
 

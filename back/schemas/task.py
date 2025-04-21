@@ -1,8 +1,16 @@
 
 from typing import Optional
 from pydantic import BaseModel
+from deva_p1_db.models import Task
 
 class TaskSchema(BaseModel):
     id: str
     done: bool
     status: Optional[str] = None
+
+class ActiveTaskSchema(BaseModel):
+    id: str
+    type: str
+    @classmethod
+    def from_db(cls, task: Task) -> "ActiveTaskSchema":
+        return cls(id=str(task.id), type=task.task_type)
