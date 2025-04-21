@@ -1,22 +1,19 @@
 
-import random
 from datetime import UTC, datetime
 from typing import Optional
 
+from deva_p1_db.models.user import User
+from deva_p1_db.repositories.user_repository import UserRepository
 from fastapi import Cookie, Depends, HTTPException, Request, Response
 from fastapi_controllers import Controller, get, patch, post
-
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
 from back.get_auth import get_user, get_user_db
 from back.schemas.user import CredsSchema, RegisterSchema, UserSchema
 from back.token import AccessToken, RefreshToken
 from database.db import Session
-from deva_p1_db.models.user import User
 from database.redis import RedisType, get_redis_client
-from deva_p1_db.repositories.user_repository import UserRepository
 
 
 class AuthController(Controller):

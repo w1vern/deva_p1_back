@@ -1,8 +1,10 @@
 
 
-from pydantic import BaseModel, ConfigDict
 from uuid import UUID
+
 from deva_p1_db.models.user import User
+from pydantic import BaseModel, ConfigDict
+
 
 class UserSchema (BaseModel):
     id: UUID

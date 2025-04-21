@@ -1,7 +1,8 @@
 
 from uuid import UUID
-from pydantic import BaseModel
+
 from deva_p1_db.models import Project
+from pydantic import BaseModel
 
 
 class CreateProjectSchema(BaseModel):

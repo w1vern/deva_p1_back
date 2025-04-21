@@ -1,21 +1,20 @@
 
 from uuid import UUID
-from fastapi_controllers import Controller, get, post
-from fastapi import Depends
 
-from back.broker import get_broker, send_message
-from back.get_auth import get_user_db
-from database.db import Session
-
-from fastapi import HTTPException
+from deva_p1_db.enums.file_type import FileType
+from deva_p1_db.enums.task_type import TaskType
 from deva_p1_db.models.user import User
 from deva_p1_db.repositories.file_repository import FileRepository
 from deva_p1_db.repositories.task_repository import TaskRepository
-from back.schemas.file import FileSchema
-from faststream.rabbit import RabbitBroker
-from deva_p1_db.enums.task_type import TaskType
 from deva_p1_db.schemas.task import TaskToAi
-from deva_p1_db.enums.file_type import FileType
+from fastapi import Depends, HTTPException
+from fastapi_controllers import Controller, get, post
+from faststream.rabbit import RabbitBroker
+
+from back.broker import get_broker, send_message
+from back.get_auth import get_user_db
+from back.schemas.file import FileSchema
+from database.db import Session
 
 
 class TaskController(Controller):

@@ -1,31 +1,30 @@
 
 
+import mimetypes
+import re
+import shutil
 from datetime import timedelta
 from io import BytesIO
-import mimetypes
 from typing import Annotated
 from uuid import UUID
+from zipfile import ZIP_DEFLATED, ZipFile
+
+from deva_p1_db.enums.file_type import FileType
+from deva_p1_db.models import File as FileDb
+from deva_p1_db.models import User
+from deva_p1_db.repositories import FileRepository, ProjectRepository
+from fastapi import Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi_controllers import Controller, get, post
-from fastapi import Depends, File, HTTPException, Request, UploadFile
-from back.config import Config
 from minio import Minio, S3Error
 
-from database.db import Session
-
-from deva_p1_db.repositories import FileRepository, ProjectRepository
-from deva_p1_db.models import User, File as FileDb
-
+from back.config import Config
 from back.get_auth import get_user, get_user_db
-from back.schemas.file import FileSchema, FileDownloadURLSchema
-from deva_p1_db.enums.file_type import FileType
-
+from back.schemas.file import FileDownloadURLSchema, FileSchema
 from back.schemas.user import UserSchema
 from config import settings
+from database.db import Session
 from database.s3 import get_s3_client
-from zipfile import ZIP_DEFLATED, ZipFile
-import shutil
-import re
 
 
 class FileController(Controller):

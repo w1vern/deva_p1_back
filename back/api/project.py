@@ -1,20 +1,22 @@
 
 
 
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import UUID
-from fastapi import Depends, HTTPException
-from fastapi_controllers import Controller, get, post, delete, patch
-from minio import Minio
 
-from database.db import Session
-from deva_p1_db.models import User, Project
-from deva_p1_db.repositories import ProjectRepository, FileRepository, TaskRepository
+from deva_p1_db.models import User
+from deva_p1_db.repositories import (FileRepository, ProjectRepository,
+                                     TaskRepository)
+from fastapi import Depends, HTTPException
+from fastapi_controllers import Controller, delete, get, patch, post
+from minio import Minio
 
 from back.get_auth import get_user_db
 from back.schemas.file import FileSchema
-from back.schemas.project import CreateProjectSchema, ProjectSchema, EditProjectSchema
+from back.schemas.project import (CreateProjectSchema, EditProjectSchema,
+                                  ProjectSchema)
 from back.schemas.task import ActiveTaskSchema
+from database.db import Session
 from database.s3 import get_s3_client
 
 

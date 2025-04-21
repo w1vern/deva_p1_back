@@ -4,12 +4,12 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import jwt
-
-from back.config import SECRET, Config
-from back.schemas.user import UserSchema
 from deva_p1_db.models.user import User
 from deva_p1_db.repositories.user_repository import UserRepository
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from back.config import SECRET, Config
+from back.schemas.user import UserSchema
 
 
 class AccessToken:

@@ -2,8 +2,9 @@
 
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel
+
 from deva_p1_db.models import File
+from pydantic import BaseModel
 
 
 class FileSchema(BaseModel):

@@ -1,15 +1,13 @@
 
 import stat
-from faststream.rabbit import RabbitBroker, fastapi, RabbitQueue, RabbitMessage
+
+from deva_p1_db.enums.rabbit import RabbitQueuesToBack
+from deva_p1_db.schemas.task import TaskToAi, TaskToBack
+from faststream.rabbit import RabbitBroker, RabbitMessage, RabbitQueue, fastapi
 
 from back.config import Config
 from config import settings
-
-from deva_p1_db.schemas.task import TaskToAi, TaskToBack
-from deva_p1_db.enums.rabbit import RabbitQueuesToBack
-
 from database.redis import RedisType, get_redis_client
-
 
 RABBIT_URL = f"amqp://{settings.rabbit_user}:{settings.rabbit_password}@{settings.rabbit_ip}:{settings.rabbit_port}/"
 

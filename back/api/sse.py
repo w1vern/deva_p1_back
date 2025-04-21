@@ -1,16 +1,14 @@
 import asyncio
-from typing import AsyncGenerator
-from fastapi.responses import StreamingResponse
-from fastapi_sse import sse_handler
-from fastapi_controllers import Controller, get
-from fastapi import Depends, Request
 
+from fastapi import Depends, Request
+from fastapi_controllers import Controller, get
+from fastapi_sse import sse_handler
 from redis.asyncio import Redis
 
 from back.config import Config
-from database.db import Session
 from back.schemas.task import TaskSchema
-from database.redis import get_redis_client, RedisType
+from database.db import Session
+from database.redis import RedisType, get_redis_client
 
 
 class SseController(Controller):
