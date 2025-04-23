@@ -1,6 +1,7 @@
 import asyncio
+from uuid import UUID
 
-from fastapi import Depends, Request
+from fastapi import Depends, HTTPException, Request
 from fastapi_controllers import Controller, get
 from fastapi_sse import sse_handler
 from redis.asyncio import Redis
@@ -10,6 +11,9 @@ from back.schemas.task import TaskSchema
 from database.db import Session
 from database.redis import RedisType, get_redis_client
 
+from deva_p1_db.models import Task
+from deva_p1_db.repositories import TaskRepository
+
 
 class SseController(Controller):
     prefix = "/sse"
@@ -17,6 +21,7 @@ class SseController(Controller):
 
     def __init__(self, session: Session) -> None:
         self.session = session
+        self.tr = TaskRepository(self.session)
 
     @get("/{task_id}")
     @sse_handler()
@@ -28,6 +33,12 @@ class SseController(Controller):
         done_cache_key = f"{RedisType.task}:{task_id}"
         status_cache_key = f"{RedisType.task_status}:{task_id}"
         prev_state = None
+        task = await self.tr.get_by_id(UUID(task_id))
+        if task is None:
+            raise HTTPException(status_code=404, detail="task not found")
+        is_origin = task.origin_task_id is None
+        
+        
         while True:
             if await request.is_disconnected():
                 break

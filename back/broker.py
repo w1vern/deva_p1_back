@@ -2,7 +2,7 @@
 import stat
 
 from deva_p1_db.enums.rabbit import RabbitQueuesToBack
-from deva_p1_db.schemas.task import TaskToAi, TaskToBack
+from deva_p1_db.schemas.task import TaskToAi, TaskReadyToBack, TaskStatusToBack
 from faststream.rabbit import RabbitBroker, RabbitMessage, RabbitQueue, fastapi
 
 from back.config import Config
@@ -23,13 +23,11 @@ async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: Tas
 
 
 @router.subscriber(RabbitQueuesToBack.done_task)
-async def handle_done_task(msg: TaskToBack):
+async def handle_done_task(msg: TaskReadyToBack):
     redis = await get_redis_client()
-    await redis.set(f"{RedisType.task}:{msg.task_id}", int(msg.done), ex=Config.redis_task_status_lifetime)
+    await redis.set(f"{RedisType.task}:{msg.task_id}", 1, ex=Config.redis_task_status_lifetime)
 
 @router.subscriber(RabbitQueuesToBack.progress_task)
-async def handle_progress_task(msg: TaskToBack):
+async def handle_progress_task(msg: TaskStatusToBack):
     redis = await get_redis_client()
-    if msg.status is None or msg.done is True:
-        return
-    await redis.set(f"{RedisType.task_status}:{msg.task_id}", msg.status, ex=Config.redis_task_status_lifetime)
+    await redis.set(f"{RedisType.task_status}:{msg.task_id}", msg.progress, ex=Config.redis_task_status_lifetime)

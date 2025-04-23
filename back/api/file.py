@@ -79,6 +79,7 @@ class FileController(Controller):
                 user_file_name=file.filename,
                 file_type=content_type,
                 user=user,
+                file_size=file_size,
                 project=project
             )
 
