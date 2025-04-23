@@ -9,7 +9,7 @@ from typing import Annotated
 from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from deva_p1_db.enums.file_type import FileType
+from deva_p1_db.enums.file_type import resolve_file_type, FileTypes, FileCategory
 from deva_p1_db.models import File as FileDb
 from deva_p1_db.models import User
 from deva_p1_db.repositories import FileRepository, ProjectRepository
@@ -45,15 +45,6 @@ class FileController(Controller):
                           ) -> FileSchema:
 
         try:
-            if not minio_client.bucket_exists(settings.minio_bucket):
-                try:
-                    minio_client.make_bucket(settings.minio_bucket)
-                except S3Error as e:
-                    raise HTTPException(
-                        status_code=500,
-                        detail=f"bucket creation error: {e.message}"
-                    )
-
             project = await self.pr.get_by_id(project_id)
             if project is None:
                 raise HTTPException(
@@ -64,43 +55,22 @@ class FileController(Controller):
                 file.filename = ""
 
             content_type = mimetypes.guess_type(file.filename)[0]
-            match content_type:
-                case "image/jpeg":
-                    content_type = FileType.image_jpg.value
-                case "image/png":
-                    content_type = FileType.image_png.value
-                case "image/webp":
-                    content_type = FileType.image_webp.value
-                case "audio/mpeg":
-                    content_type = FileType.audio_mp3.value
-                case "audio/wav":
-                    content_type = FileType.audio_wav.value
-                case "audio/ogg":
-                    content_type = FileType.audio_ogg.value
-                case "audio/flac":
-                    content_type = FileType.audio_flac.value
-                case "audio/aac":
-                    content_type = FileType.audio_aac.value
-                case "audio/mp4":
-                    content_type = FileType.audio_m4a.value
-                case "audio/opus":
-                    content_type = FileType.audio_opus.value
-                case "audio/webm":
-                    content_type = FileType.audio_webm.value
-                case "video/mp4":
-                    content_type = FileType.video_mp4.value
-                case "video/x-matroska":
-                    content_type = FileType.video_mkv.value
-                case "video/x-msvideo":
-                    content_type = FileType.video_avi.value
-                case "video/quicktime":
-                    content_type = FileType.video_mov.value
-                case "video/webm":
-                    content_type = FileType.video_webm.value
-                case None:
-                    content_type = FileType.undefined.value
-                case _:
-                    content_type = FileType.undefined.value
+            if content_type is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="undefined file type"
+                )
+            file_category = resolve_file_type(content_type).category
+            if not file_category in [FileCategory.audio.value, FileCategory.video.value, FileCategory.image.value]:
+                raise HTTPException(
+                    status_code=400,
+                    detail="unsupported file type to upload"
+                )
+            if file_category in [FileCategory.audio.value, FileCategory.video.value] and project.origin_file_id is not None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="project already has origin file"
+                )
 
             file_data = await file.read()
             file_size = len(file_data)
@@ -118,9 +88,9 @@ class FileController(Controller):
                     detail="server error"
                 )
 
-            owr = minio_client.put_object(
+            minio_client.put_object(
                 bucket_name=settings.minio_bucket,
-                object_name=str(db_file.id),
+                object_name=db_file.minio_name,
                 data=BytesIO(file_data),
                 length=file_size,
                 content_type=content_type
@@ -149,105 +119,85 @@ class FileController(Controller):
             )
         response = minio_client.get_object(
             bucket_name=settings.minio_bucket,
-            object_name=str(file.id),
+            object_name=file.minio_name,
         )
         return StreamingResponse(
             response,
             media_type="application/octet-stream",
-            headers={"Content-Disposition": f'attachment; filename="{file.user_file_name}"'})
+            headers={"Content-Disposition": f'attachment; filename="{file.file_name}"'})
 
-    @post("/download_files")
-    async def download_files(self, files_id: list[str], user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)):
-        files: list[FileDb] = []
-        for file_id in files_id:
-            file = await self.fr.get_by_id(UUID(file_id))
-            if file is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"file {file_id} not found"
-                )
-            if file.user_id != user.id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="permission denied"
-                )
-            files.append(file)
-        if len(files) == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="files not found"
-            )
+    # @post("/download_files")
+    # async def download_files(self, files_id: list[str], user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)):
+    #     files: list[FileDb] = []
+    #     for file_id in files_id:
+    #         file = await self.fr.get_by_id(UUID(file_id))
+    #         if file is None:
+    #             raise HTTPException(
+    #                 status_code=404,
+    #                 detail=f"file {file_id} not found"
+    #             )
+    #         if file.user_id != user.id:
+    #             raise HTTPException(
+    #                 status_code=403,
+    #                 detail="permission denied"
+    #             )
+    #         files.append(file)
+    #     if len(files) == 0:
+    #         raise HTTPException(
+    #             status_code=404,
+    #             detail="files not found"
+    #         )
 
-        zip_stream = BytesIO()
-        with ZipFile(zip_stream, "w", ZIP_DEFLATED) as zip_file:
-            for file in files:
-                obj = minio_client.get_object(
-                    bucket_name=settings.minio_bucket,
-                    object_name=str(file.id),
-                )
-                with zip_file.open(file.user_file_name, "w") as dest_file:
-                    shutil.copyfileobj(obj, dest_file, length=1024*64)
-                obj.close()
-                obj.release_conn()
+    #     zip_stream = BytesIO()
+    #     with ZipFile(zip_stream, "w", ZIP_DEFLATED) as zip_file:
+    #         for file in files:
+    #             obj = minio_client.get_object(
+    #                 bucket_name=settings.minio_bucket,
+    #                 object_name=str(file.id),
+    #             )
+    #             with zip_file.open(file.user_file_name, "w") as dest_file:
+    #                 shutil.copyfileobj(obj, dest_file, length=1024*64)
+    #             obj.close()
+    #             obj.release_conn()
 
-        zip_stream.seek(0)
-        return StreamingResponse(
-            zip_stream,
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": f'attachment; filename="{user.login}.zip"'}
-        )
+    #     zip_stream.seek(0)
+    #     return StreamingResponse(
+    #         zip_stream,
+    #         media_type="application/zip",
+    #         headers={
+    #             "Content-Disposition": f'attachment; filename="{user.login}.zip"'}
+    #     )
 
-    @post("/get_download_urls")
-    async def get_download_urls(self, files_id: list[str], user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileDownloadURLSchema]:
-        files: list[FileDownloadURLSchema] = []
-        for file_id in files_id:
-            file = await self.fr.get_by_id(UUID(file_id))
-            if file is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"file {file_id} not found"
-                )
-            if file.user_id != user.id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="permission denied"
-                )
-            files.append(FileDownloadURLSchema.from_db(file, minio_client.presigned_get_object(
-                bucket_name=settings.minio_bucket,
-                object_name=str(file_id),
-                expires=timedelta(seconds=Config.minio_url_live_time),
-                response_headers={
-                    "response-content-disposition": f'attachment; filename="{file.user_file_name}"'
-                })))
-        return files
+    # @post("/get_download_urls")
+    # async def get_download_urls(self, files_id: list[str], user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)) -> list[FileDownloadURLSchema]:
+    #     files: list[FileDownloadURLSchema] = []
+    #     for file_id in files_id:
+    #         file = await self.fr.get_by_id(UUID(file_id))
+    #         if file is None:
+    #             raise HTTPException(
+    #                 status_code=404,
+    #                 detail=f"file {file_id} not found"
+    #             )
+    #         if file.user_id != user.id:
+    #             raise HTTPException(
+    #                 status_code=403,
+    #                 detail="permission denied"
+    #             )
+    #         files.append(FileDownloadURLSchema.from_db(file, minio_client.presigned_get_object(
+    #             bucket_name=settings.minio_bucket,
+    #             object_name=file.minio_name,
+    #             expires=timedelta(seconds=Config.minio_url_live_time),
+    #             response_headers={
+    #                 "response-content-disposition": f'attachment; filename="{file.file_name}"'
+    #             })))
+    #     return files
 
-    @get("/get_video_preview/{file_id}")
-    async def get_video_preview(self, file_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)):
-        file = await self.fr.get_by_id(UUID(file_id))
-        if file is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"file {file_id} not found"
-            )
-        if file.user_id != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="permission denied"
-            )
-        return StreamingResponse(
-            minio_client.get_object(
-                bucket_name=settings.minio_bucket,
-                object_name=str(file_id),
-            ),
-            media_type="video/mp4",
-        )
-    
     @get("/video/{file_id}")
     async def stream_video(self, file_id: str, request: Request, user: UserSchema = Depends(get_user), minio_client: Minio = Depends(get_s3_client)):
         range_header = request.headers.get("range")
         if range_header is None:
-            raise HTTPException(status_code=416, detail="Range header required")
+            raise HTTPException(
+                status_code=416, detail="Range header required")
 
         match = re.match(r"bytes=(\d+)-(\d*)", range_header)
         if not match:

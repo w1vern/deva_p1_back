@@ -10,6 +10,11 @@ class TaskSchema(BaseModel):
     done: bool
     status: Optional[str] = None
 
+class TaskCreateSchema(BaseModel):
+    project_id: str
+    task_type: str
+    prompt: Optional[str]
+
 class ActiveTaskSchema(BaseModel):
     id: str
     type: str
