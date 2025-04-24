@@ -45,7 +45,7 @@ class ProjectController(Controller):
                 status_code=500, detail="project creation error")
         return ProjectSchema.from_db(project)
     
-    @get("/{project_id}/")
+    @get("/{project_id}")
     async def get_by_id(self,
                   project_id: UUID,
                   user: UserSchema = Depends(get_user)
