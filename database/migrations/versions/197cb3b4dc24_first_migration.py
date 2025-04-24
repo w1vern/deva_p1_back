@@ -1,17 +1,18 @@
 """first migration
 
-Revision ID: 8fddf723cd9c
+Revision ID: 197cb3b4dc24
 Revises: 
-Create Date: 2025-04-22 21:39:48.074045
+Create Date: 2025-04-24 06:30:52.051546
 
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
-revision: str = '8fddf723cd9c'
+revision: str = '197cb3b4dc24'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -34,6 +35,7 @@ def upgrade() -> None:
     sa.Column('created_date', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('last_modified_date', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('file_type', sa.String(), nullable=False),
+    sa.Column('file_size', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('metadata_is_hide', sa.Boolean(), nullable=True),
     sa.Column('metadata_timecode', sa.Float(), nullable=True),
@@ -64,6 +66,7 @@ def upgrade() -> None:
     sa.Column('origin_file_id', sa.Uuid(), nullable=True),
     sa.Column('transcription_id', sa.Uuid(), nullable=True),
     sa.Column('summary_id', sa.Uuid(), nullable=True),
+    sa.Column('frames_extract_done', sa.Boolean(), nullable=False),
     sa.ForeignKeyConstraint(['holder_id'], ['users.id'], ),
     sa.ForeignKeyConstraint(['origin_file_id'], ['files.id'], ),
     sa.ForeignKeyConstraint(['summary_id'], ['files.id'], ),
