@@ -20,7 +20,7 @@ class TaskCreateSchema(BaseModel):
 
 class RedisTaskCacheSchema(BaseModel):
     id: UUID
-    project_id: str
+    project_id: UUID
     task_type: str
 
     @classmethod
