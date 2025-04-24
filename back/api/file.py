@@ -86,6 +86,8 @@ class FileController(Controller):
                     status_code=500,
                     detail="server error"
                 )
+            
+            await self.pr.add_origin_file(project, db_file)
 
             minio_client.put_object(
                 bucket_name=settings.minio_bucket,
@@ -195,13 +197,15 @@ class FileController(Controller):
     #             })))
     #     return files
 
-    @get("/video/{file_id}")
+    @get("/video/{file_id}/{file_type}")
     async def stream_video(self,
-                           file_id: str,
+                           file_id: UUID,
+                           file_type: str,
                            request: Request,
                            user: UserSchema = Depends(get_user),
                            minio_client: Minio = Depends(get_s3_client)
                            ):
+        minio_name = f"{file_id}{resolve_file_type(file_type).extension}"
         range_header = request.headers.get("range")
         if range_header is None:
             raise HTTPException(
@@ -214,7 +218,7 @@ class FileController(Controller):
         start = int(match.group(1))
         end = int(match.group(2)) if match.group(2) else None
 
-        stat = minio_client.stat_object(settings.minio_bucket, file_id)
+        stat = minio_client.stat_object(settings.minio_bucket, minio_name)
         file_size = stat.size
         if file_size is None:
             raise HTTPException(status_code=404, detail="File not found")
@@ -226,7 +230,7 @@ class FileController(Controller):
 
         response = minio_client.get_object(
             settings.minio_bucket,
-            file_id,
+            minio_name,
             offset=start,
             length=content_length
         )
