@@ -41,6 +41,16 @@ class ProjectController(Controller):
             raise HTTPException(
                 status_code=500, detail="project creation error")
         return ProjectSchema.from_db(project)
+    
+    @get("/{project_id}/")
+    async def get_by_id(self,
+                  project_id: UUID,
+                  user: UserSchema = Depends(get_user)
+                  ) -> ProjectSchema:
+        project = await self.pr.get_by_id(project_id)
+        if project is None:
+            raise HTTPException(status_code=404, detail="project not found")
+        return ProjectSchema.from_db(project)
 
     @delete("/{project_id}")
     async def delete(self,
