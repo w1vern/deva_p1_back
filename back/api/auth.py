@@ -10,7 +10,7 @@ from redis.asyncio import Redis
 
 from back.config import Config
 from back.get_auth import get_user, get_user_db
-from back.schemas.user import CredsSchema, RegisterSchema, UserSchema
+from back.schemas.user import CredsSchema, RegisterSchema, UserSchema, UserUpdateSchema
 from back.token import AccessToken, RefreshToken
 from database.db import Session
 from database.redis import RedisType, get_redis_client
@@ -133,14 +133,12 @@ class AuthController(Controller):
 
     @patch("/update_credentials")
     async def update_creds(self,
-                           new_login: str | None = None,
-                           new_password: str | None = None,
-                           new_password_repeat: str | None = None,
+                           user_update: UserUpdateSchema,
                            user: User = Depends(get_user_db)):
-        if new_password != new_password_repeat:
+        if user_update.new_password != user_update.new_password_repeat:
             raise HTTPException(
                 status_code=401, detail="passwords do not match")
-        await self.ur.update_credentials(user, new_login, new_password)
+        await self.ur.update_credentials(user, user_update.new_login, user_update.new_password)
         return {"message": "OK"}
 
     @get("/user_info")

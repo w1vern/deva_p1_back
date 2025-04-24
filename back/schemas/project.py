@@ -12,8 +12,8 @@ class CreateProjectSchema(BaseModel):
 
 
 class EditProjectSchema(BaseModel):
-    name: str | None
-    description: str | None
+    name: str | None = None
+    description: str | None = None
 
 
 class ProjectSchema(BaseModel):

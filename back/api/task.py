@@ -28,7 +28,7 @@ async def send_message_and_cache(broker: RabbitBroker, redis: Redis, task: Task,
     await send_message(broker, f"{task.task_type}_task", TaskToAi(task_id=task.id))
     await redis.set(f"{RedisType.task_cache}:{project_id}:{task.task_type}", RedisTaskCacheSchema.from_db(
         task).model_dump_json(), ex=Config.redis_task_status_lifetime)
-
+    
 
 class TaskController(Controller):
     prefix = "/task"
@@ -163,10 +163,10 @@ class TaskController(Controller):
                             status_code=500,
                             detail="server error"
                         )
-                    task_queue.append(summary_task)
                     await self.session.commit()
                     for task in task_queue:
                         await send_message_and_cache(broker, redis, task, project.id)
+                    asyncio.create_task
                     return ActiveTaskSchema.from_db(origin_task)
             case _:
                 raise HTTPException(

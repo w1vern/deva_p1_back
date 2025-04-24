@@ -22,4 +22,9 @@ class RegisterSchema (BaseModel):
     login: str
     password: str
     password_repeat: str
+
+class UserUpdateSchema (BaseModel):
+    new_login: str | None = None
+    new_password: str | None = None
+    new_password_repeat: str | None = None
     

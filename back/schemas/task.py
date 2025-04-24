@@ -9,7 +9,7 @@ class TaskSchema(BaseModel):
     id: UUID
     task_type: str
     done: bool
-    status: float | None
+    status: float | None = None
 
 
 class TaskCreateSchema(BaseModel):
