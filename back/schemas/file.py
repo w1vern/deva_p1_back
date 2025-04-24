@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 class FileSchema(BaseModel):
     id: UUID
-    name: str
+    file_name: str
     file_type: str
     created_date: datetime
     last_modified_date: datetime
@@ -21,7 +21,7 @@ class FileSchema(BaseModel):
 
 class FileDownloadURLSchema(BaseModel):
     id: UUID
-    name: str
+    file_name: str
     file_type: str
     created_date: datetime
     last_modified_date: datetime
