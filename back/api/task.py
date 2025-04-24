@@ -14,7 +14,7 @@ from fastapi_sse import sse_handler
 from faststream.rabbit import RabbitBroker
 from redis.asyncio import Redis
 
-from back.broker import get_broker, send_message
+from back.broker import get_broker, send_message_and_cache
 from back.config import Config
 from back.get_auth import get_user, get_user_db
 from back.schemas.task import (ActiveTaskSchema, RedisTaskCacheSchema,
@@ -23,12 +23,6 @@ from back.schemas.user import UserSchema
 from database.db import Session
 from database.redis import RedisType, get_redis_client
 
-
-async def send_message_and_cache(broker: RabbitBroker, redis: Redis, task: Task, project_id: UUID):
-    await send_message(broker, f"{task.task_type}_task", TaskToAi(task_id=task.id))
-    await redis.set(f"{RedisType.task_cache}:{project_id}:{task.task_type}", RedisTaskCacheSchema.from_db(
-        task).model_dump_json(), ex=Config.redis_task_status_lifetime)
-    
 
 class TaskController(Controller):
     prefix = "/task"
