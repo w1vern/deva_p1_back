@@ -113,4 +113,4 @@ class ProjectController(Controller):
             raise HTTPException(status_code=404, detail="project not found")
         if project.holder_id != user.id:
             raise HTTPException(status_code=403, detail="permission denied")
-        return [ActiveTaskSchema.from_db(task) for task in (await self.tr.get_by_project(project))]
+        return [ActiveTaskSchema.from_db(task) for task in (await self.tr.get_by_project(project)) if task.done is False]

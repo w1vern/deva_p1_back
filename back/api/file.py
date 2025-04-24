@@ -42,52 +42,52 @@ class FileController(Controller):
                           minio_client: Minio = Depends(get_s3_client),
                           ) -> FileSchema:
 
-        try:
-            project = await self.pr.get_by_id(project_id)
-            if project is None:
-                raise HTTPException(
-                    status_code=404,
-                    detail="project not found"
-                )
-            if file.filename is None:
-                file.filename = ""
+        project = await self.pr.get_by_id(project_id)
+        if project is None:
+            raise HTTPException(
+                status_code=404,
+                detail="project not found"
+            )
+        if file.filename is None:
+            file.filename = ""
 
-            content_type = mimetypes.guess_type(file.filename)[0]
-            if content_type is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="undefined file type"
-                )
-            file_category = resolve_file_type(content_type).category
-            if not file_category in [FileCategory.audio.value, FileCategory.video.value, FileCategory.image.value]:
-                raise HTTPException(
-                    status_code=400,
-                    detail="unsupported file type to upload"
-                )
-            if file_category in [FileCategory.audio.value, FileCategory.video.value] and project.origin_file_id is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="project already has origin file"
-                )
-
-            file_data = await file.read()
-            file_size = len(file_data)
-
-            db_file = await self.fr.create(
-                file_name=file.filename,
-                file_type=content_type,
-                user=user,
-                file_size=file_size,
-                project=project
+        content_type = mimetypes.guess_type(file.filename)[0]
+        if content_type is None:
+            raise HTTPException(
+                status_code=400,
+                detail="undefined file type"
+            )
+        file_category = resolve_file_type(content_type).category
+        if not file_category in [FileCategory.audio.value, FileCategory.video.value, FileCategory.image.value]:
+            raise HTTPException(
+                status_code=400,
+                detail="unsupported file type to upload"
+            )
+        if file_category in [FileCategory.audio.value, FileCategory.video.value] and project.origin_file_id is not None:
+            raise HTTPException(
+                status_code=400,
+                detail="project already has origin file"
             )
 
-            if db_file is None:
-                raise HTTPException(
-                    status_code=500,
-                    detail="server error"
-                )
-            
-            await self.pr.add_origin_file(project, db_file)
+        file_data = await file.read()
+        file_size = len(file_data)
+
+        db_file = await self.fr.create(
+            file_name=file.filename,
+            file_type=content_type,
+            user=user,
+            file_size=file_size,
+            project=project
+        )
+
+        if db_file is None:
+            raise HTTPException(
+                status_code=500,
+                detail="server error"
+            )
+
+        await self.pr.add_origin_file(project, db_file)
+        try:
 
             minio_client.put_object(
                 bucket_name=settings.minio_bucket,
@@ -99,7 +99,7 @@ class FileController(Controller):
             return FileSchema.from_db(db_file)
         except S3Error as e:
             raise HTTPException(
-                status_code=500,
+                status_code=404,
                 detail=f"MinIO error: {e.message}"
             )
         finally:
@@ -122,10 +122,16 @@ class FileController(Controller):
                 status_code=403,
                 detail="permission denied"
             )
-        response = minio_client.get_object(
-            bucket_name=settings.minio_bucket,
-            object_name=str(file.id),
-        )
+        try:
+            response = minio_client.get_object(
+                bucket_name=settings.minio_bucket,
+                object_name=str(file.id),
+            )
+        except S3Error as e:
+            raise HTTPException(
+                status_code=404,
+                detail=f"MinIO error: {e.message}"
+            )
         return StreamingResponse(
             response,
             media_type="application/octet-stream",
@@ -216,22 +222,31 @@ class FileController(Controller):
         start = int(match.group(1))
         end = int(match.group(2)) if match.group(2) else None
 
-        stat = minio_client.stat_object(settings.minio_bucket, str(file_id))
-        file_size = stat.size
-        if file_size is None:
-            raise HTTPException(status_code=404, detail="File not found")
+        try:
 
-        if end is None or end >= file_size:
-            end = file_size - 1
+            stat = minio_client.stat_object(
+                settings.minio_bucket, str(file_id))
+            file_size = stat.size
+            if file_size is None:
+                raise HTTPException(status_code=404, detail="File not found")
 
-        content_length = end - start + 1
+            if end is None or end >= file_size:
+                end = file_size - 1
 
-        response = minio_client.get_object(
-            settings.minio_bucket,
-            str(file_id),
-            offset=start,
-            length=content_length
-        )
+            content_length = end - start + 1
+
+            response = minio_client.get_object(
+                settings.minio_bucket,
+                str(file_id),
+                offset=start,
+                length=content_length
+            )
+
+        except S3Error as e:
+            raise HTTPException(
+                status_code=404,
+                detail=f"MinIO error: {e.message}"
+            )
 
         headers = {
             "Content-Range": f"bytes {start}-{end}/{file_size}",
