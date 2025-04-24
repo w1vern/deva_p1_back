@@ -2,7 +2,7 @@
 import stat
 
 from deva_p1_db.enums.rabbit import RabbitQueuesToBack
-from deva_p1_db.schemas.task import TaskToAi, TaskReadyToBack, TaskStatusToBack
+from deva_p1_db.schemas.task import TaskReadyToBack, TaskStatusToBack, TaskToAi
 from faststream.rabbit import RabbitBroker, RabbitMessage, RabbitQueue, fastapi
 
 from back.config import Config

@@ -9,7 +9,8 @@ from typing import Annotated
 from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from deva_p1_db.enums.file_type import resolve_file_type, FileTypes, FileCategory
+from deva_p1_db.enums.file_type import (FileCategory, FileTypes,
+                                        resolve_file_type)
 from deva_p1_db.models import File as FileDb
 from deva_p1_db.models import User
 from deva_p1_db.repositories import FileRepository, ProjectRepository
