@@ -2,8 +2,6 @@
 
 import mimetypes
 import re
-import shutil
-from datetime import timedelta
 from io import BytesIO
 from typing import Annotated
 from uuid import UUID
@@ -19,7 +17,6 @@ from fastapi.responses import StreamingResponse
 from fastapi_controllers import Controller, get, post
 from minio import Minio, S3Error
 
-from back.config import Config
 from back.get_auth import get_user, get_user_db
 from back.schemas.file import FileDownloadURLSchema, FileSchema
 from back.schemas.user import UserSchema
@@ -107,7 +104,11 @@ class FileController(Controller):
             await file.close()
 
     @get("/download/{file_id}")
-    async def download_file(self, file_id: str, user: User = Depends(get_user_db), minio_client: Minio = Depends(get_s3_client)):
+    async def download_file(self,
+                            file_id: str,
+                            user: User = Depends(get_user_db),
+                            minio_client: Minio = Depends(get_s3_client)
+                            ):
         file = await self.fr.get_by_id(UUID(file_id))
         if file is None:
             raise HTTPException(
@@ -195,7 +196,12 @@ class FileController(Controller):
     #     return files
 
     @get("/video/{file_id}")
-    async def stream_video(self, file_id: str, request: Request, user: UserSchema = Depends(get_user), minio_client: Minio = Depends(get_s3_client)):
+    async def stream_video(self,
+                           file_id: str,
+                           request: Request,
+                           user: UserSchema = Depends(get_user),
+                           minio_client: Minio = Depends(get_s3_client)
+                           ):
         range_header = request.headers.get("range")
         if range_header is None:
             raise HTTPException(

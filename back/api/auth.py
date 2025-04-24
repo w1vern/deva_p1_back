@@ -25,7 +25,10 @@ class AuthController(Controller):
         self.ur = UserRepository(self.session)
 
     @post("/refresh")
-    async def refresh(self, response: Response, session: Session, refresh_token: str = Cookie(None)):
+    async def refresh(self,
+                      response: Response,
+                      refresh_token: str = Cookie(None)
+                      ):
         if refresh_token is None:
             raise HTTPException(
                 status_code=401, detail="refresh token doesn't exist")
@@ -47,7 +50,11 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/register")
-    async def register(self, request: Request, response: Response, register_data: RegisterSchema, redis: Redis = Depends(get_redis_client)):
+    async def register(self,
+                       request: Request,
+                       register_data: RegisterSchema,
+                       redis: Redis = Depends(get_redis_client)
+                       ):
         lock_time = await redis.ttl(f"{RedisType.invalidated_access_token}:{register_data.login}")
         if lock_time > 0:
             raise HTTPException(
@@ -73,7 +80,12 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/login")
-    async def login(self, request: Request, response: Response, credentials: CredsSchema, redis: Redis = Depends(get_redis_client)):
+    async def login(self,
+                    request: Request,
+                    response: Response,
+                    credentials: CredsSchema,
+                    redis: Redis = Depends(get_redis_client)
+                    ):
         lock_time = await redis.ttl(f"{RedisType.invalidated_access_token}:{credentials.login}")
         if lock_time > 0:
             raise HTTPException(
@@ -99,7 +111,10 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/logout")
-    async def logout(self, response: Response, refresh_token: str = Cookie(None)):
+    async def logout(self,
+                     response: Response,
+                     refresh_token: str = Cookie(None)
+                     ):
         if refresh_token is None:
             raise HTTPException(status_code=401, detail="unauthorized")
         response.delete_cookie(key="refresh_token")
@@ -107,7 +122,10 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/logout_all")
-    async def logout_all(self, response: Response, user: User = Depends(get_user_db)):
+    async def logout_all(self,
+                         response: Response,
+                         user: User = Depends(get_user_db)
+                         ):
         await self.ur.update_secret(user)
         response.delete_cookie(key="refresh_token")
         response.delete_cookie(key="access_token")
@@ -115,9 +133,9 @@ class AuthController(Controller):
 
     @patch("/update_credentials")
     async def update_creds(self,
-                           new_login: Optional[str] = None,
-                           new_password: Optional[str] = None,
-                           new_password_repeat: Optional[str] = None,
+                           new_login: str | None = None,
+                           new_password: str | None = None,
+                           new_password_repeat: str | None = None,
                            user: User = Depends(get_user_db)):
         if new_password != new_password_repeat:
             raise HTTPException(

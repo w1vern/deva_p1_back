@@ -40,13 +40,13 @@ class TaskController(Controller):
         self.fr = FileRepository(self.session)
         self.pr = ProjectRepository(self.session)
 
-    @post("/create")
+    @post("/")
     async def create_task(self,
                           new_task: TaskCreateSchema,
                           user: User = Depends(get_user_db),
                           broker: RabbitBroker = Depends(get_broker),
                           redis: Redis = Depends(get_redis_client)):
-        project = await self.pr.get_by_id(UUID(new_task.project_id))
+        project = await self.pr.get_by_id(new_task.project_id)
         if project is None:
             raise HTTPException(
                 status_code=404,
@@ -191,14 +191,14 @@ class TaskController(Controller):
     @get("/sse/{task_id}")
     @sse_handler()
     async def sse_task_response(self,
-                                task_id: str,
+                                task_id: UUID,
                                 request: Request,
                                 user: UserSchema = Depends(get_user),
                                 redis: Redis = Depends(get_redis_client)
                                 ):
         done_cache_key_template = f"{RedisType.task}:"
         status_cache_key = f"{RedisType.task_status}:"
-        main_task = await self.tr.get_by_id(UUID(task_id))
+        main_task = await self.tr.get_by_id(task_id)
         prev_state = {}
         if main_task is None:
             raise HTTPException(status_code=404, detail="task not found")
@@ -219,13 +219,13 @@ class TaskController(Controller):
                 if cached:
                     if cached != prev_state.get(task.id):
                         prev_state[task.id] = cached
-                        yield TaskSchema(id=str(task.id),
+                        yield TaskSchema(id=task.id,
                                          done=False,
                                          status=cached,
                                          task_type=task.task_type)
                 cached = await redis.get(f"{done_cache_key_template}{task.id}")
                 if cached:
-                    yield TaskSchema(id=str(task.id), done=True, status=1, task_type=task.task_type)
+                    yield TaskSchema(id=task.id, done=True, status=1, task_type=task.task_type)
                     counter += 1
             if counter == task_count:
                 break
