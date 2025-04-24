@@ -32,6 +32,9 @@ class ProjectController(Controller):
                      create_data: CreateProjectSchema,
                      user: User = Depends(get_user_db)
                      ) -> ProjectSchema:
+        project = await self.pr.get_by_user_and_name(user, create_data.name)
+        if project is not None:
+            raise HTTPException(status_code=400, detail="project already exists")
         project = await self.pr.create(
             holder=user,
             name=create_data.name,

@@ -71,9 +71,9 @@ class AuthController(Controller):
         if register_data.password != register_data.password_repeat:
             raise HTTPException(
                 status_code=401, detail="passwords do not match")
-        if not await self.ur.get_by_auth(register_data.login, register_data.password) is None:
+        if await self.ur.get_by_login(register_data.login) is not None:
             raise HTTPException(
-                status_code=401, detail="user with this creds is already exists")
+                status_code=401, detail="user with this login is already exists")
         user = await self.ur.create(register_data.login, register_data.password)
         if user is None:
             raise HTTPException(
