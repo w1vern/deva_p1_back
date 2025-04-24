@@ -197,12 +197,9 @@ class TaskController(Controller):
         prev_state_done = {}
         if main_task is None:
             raise HTTPException(status_code=404, detail="task not found")
-        if main_task.origin_task_id is None:
-            tasks = await self.tr.get_by_origin_task(main_task)
-            task_count = len(tasks)
-        else:
-            tasks = [main_task]
-            task_count = 1
+        tasks = await self.tr.get_by_origin_task(main_task)
+        if len(tasks) == 0:
+            tasks.append(main_task)
         counter = 0
         iterations = 0
         while True:
@@ -230,7 +227,7 @@ class TaskController(Controller):
                         prev_state_done[task.id] = cached
                         yield TaskSchema(id=task.id, done=True, status=1, task_type=task.task_type)
                         counter += 1
-            if counter == task_count:
+            if counter >= len(tasks):
                 break
             if iterations > Config.sse_max_iterations:
                 raise HTTPException(
@@ -238,5 +235,6 @@ class TaskController(Controller):
                     detail="too long polling"
                 )
             await asyncio.sleep(Config.sse_task_polling_interval)
-        if task_count > 1:
+        if len(tasks) > 1:
             yield TaskSchema(id=task_id, done=True, status=1, task_type=main_task.task_type)
+        print("goodbye")
