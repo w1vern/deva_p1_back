@@ -1,28 +1,24 @@
 
 
+from database.s3 import get_s3_client
+from database.db import Session
+from config import settings
+from back.schemas.user import UserSchema
+from back.schemas.file import FileSchema
+from back.get_auth import get_user, get_user_db
+from minio import Minio, S3Error
+from fastapi_controllers import Controller, get, post
+from fastapi.responses import StreamingResponse
+from fastapi import Depends, File, HTTPException, Request, UploadFile
+from deva_p1_db.repositories import FileRepository, ProjectRepository
+from deva_p1_db.models import User
 import mimetypes
 import re
 from io import BytesIO
 from typing import Annotated
 from uuid import UUID
-from zipfile import ZIP_DEFLATED, ZipFile
 
-from deva_p1_db.enums.file_type import (FileCategory, FileTypes,
-                                        resolve_file_type)
-from deva_p1_db.models import File as FileDb
-from deva_p1_db.models import User
-from deva_p1_db.repositories import FileRepository, ProjectRepository
-from fastapi import Depends, File, HTTPException, Request, UploadFile
-from fastapi.responses import StreamingResponse
-from fastapi_controllers import Controller, get, post
-from minio import Minio, S3Error
-
-from back.get_auth import get_user, get_user_db
-from back.schemas.file import FileDownloadURLSchema, FileSchema
-from back.schemas.user import UserSchema
-from config import settings
-from database.db import Session
-from database.s3 import get_s3_client
+from deva_p1_db.enums.file_type import FileCategory, resolve_file_type
 
 
 class FileController(Controller):
@@ -38,8 +34,8 @@ class FileController(Controller):
     async def upload_file(self,
                           project_id: UUID,
                           file: Annotated[UploadFile, File(...)],
-                          user: User = Depends(get_user_db),
-                          minio_client: Minio = Depends(get_s3_client),
+                          user: UserSchema = Depends(get_user),
+                          minio_client: Minio = Depends(get_s3_client)
                           ) -> FileSchema:
 
         project = await self.pr.get_by_id(project_id)
@@ -57,12 +53,15 @@ class FileController(Controller):
                 status_code=400,
                 detail="undefined file type"
             )
-        file_category = resolve_file_type(content_type).category
-        if not file_category in [FileCategory.audio.value, FileCategory.video.value, FileCategory.image.value]:
+        file_type = resolve_file_type(content_type)
+        file_category = file_type.category
+
+        if file_category not in [FileCategory.audio.value, FileCategory.video.value, FileCategory.image.value, FileCategory.summary, FileCategory.transcribe]:
             raise HTTPException(
                 status_code=400,
-                detail="unsupported file type to upload"
+                detail="invalid file type"
             )
+
         if file_category in [FileCategory.audio.value, FileCategory.video.value] and project.origin_file_id is not None:
             raise HTTPException(
                 status_code=400,
@@ -74,8 +73,8 @@ class FileController(Controller):
 
         db_file = await self.fr.create(
             file_name=file.filename,
-            file_type=content_type,
-            user=user,
+            file_type=file_type.internal,
+            user=project.holder,
             file_size=file_size,
             project=project
         )
@@ -86,9 +85,7 @@ class FileController(Controller):
                 detail="server error"
             )
 
-        await self.pr.add_origin_file(project, db_file)
         try:
-
             minio_client.put_object(
                 bucket_name=settings.minio_bucket,
                 object_name=str(db_file.id),
@@ -96,14 +93,27 @@ class FileController(Controller):
                 length=file_size,
                 content_type=content_type
             )
-            return FileSchema.from_db(db_file)
         except S3Error as e:
+            await self.session.rollback()
             raise HTTPException(
                 status_code=404,
                 detail=f"MinIO error: {e.message}"
             )
         finally:
             await file.close()
+
+        go_down = False
+        match file_category:
+            case FileCategory.audio.value:
+                go_down = True
+            case value if value is FileCategory.video.value or go_down:
+                await self.pr.add_origin_file(project, db_file)
+            case FileCategory.transcribe.value:
+                await self.pr.add_transcription_file(project, db_file)
+            case FileCategory.summary.value:
+                await self.pr.add_summary_file(project, db_file)
+
+        return FileSchema.from_db(db_file)
 
     @get("/download/{file_id}")
     async def download_file(self,
