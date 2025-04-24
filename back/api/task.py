@@ -33,7 +33,7 @@ class TaskController(Controller):
         self.fr = FileRepository(self.session)
         self.pr = ProjectRepository(self.session)
 
-    @post("/")
+    @post("")
     async def create_task(self,
                           new_task: TaskCreateSchema,
                           user: User = Depends(get_user_db),

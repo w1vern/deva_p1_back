@@ -91,7 +91,7 @@ class FileController(Controller):
 
             minio_client.put_object(
                 bucket_name=settings.minio_bucket,
-                object_name=db_file.minio_name,
+                object_name=str(db_file.id),
                 data=BytesIO(file_data),
                 length=file_size,
                 content_type=content_type
@@ -124,7 +124,7 @@ class FileController(Controller):
             )
         response = minio_client.get_object(
             bucket_name=settings.minio_bucket,
-            object_name=file.minio_name,
+            object_name=str(file.id),
         )
         return StreamingResponse(
             response,
@@ -197,15 +197,13 @@ class FileController(Controller):
     #             })))
     #     return files
 
-    @get("/video/{file_id}/{file_type}")
+    @get("/video/{file_id}")
     async def stream_video(self,
                            file_id: UUID,
-                           file_type: str,
                            request: Request,
                            user: UserSchema = Depends(get_user),
                            minio_client: Minio = Depends(get_s3_client)
                            ):
-        minio_name = f"{file_id}{resolve_file_type(file_type).extension}"
         range_header = request.headers.get("range")
         if range_header is None:
             raise HTTPException(
@@ -218,7 +216,7 @@ class FileController(Controller):
         start = int(match.group(1))
         end = int(match.group(2)) if match.group(2) else None
 
-        stat = minio_client.stat_object(settings.minio_bucket, minio_name)
+        stat = minio_client.stat_object(settings.minio_bucket, str(file_id))
         file_size = stat.size
         if file_size is None:
             raise HTTPException(status_code=404, detail="File not found")
@@ -230,7 +228,7 @@ class FileController(Controller):
 
         response = minio_client.get_object(
             settings.minio_bucket,
-            minio_name,
+            str(file_id),
             offset=start,
             length=content_length
         )

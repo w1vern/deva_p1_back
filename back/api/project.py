@@ -27,7 +27,7 @@ class ProjectController(Controller):
         self.fr = FileRepository(self.session)
         self.tr = TaskRepository(self.session)
 
-    @post("/")
+    @post("")
     async def create(self,
                      create_data: CreateProjectSchema,
                      user: User = Depends(get_user_db)
