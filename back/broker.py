@@ -43,18 +43,8 @@ async def handle_done_task(msg: TaskReadyToBack, session: Session, broker: Rabbi
         raise Exception("got incorrect task id from ai")
     if handled_task.origin_task_id is not None:
         if handled_task.task_type == TaskType.frames_extract or handled_task.task_type == TaskType.transcribe:
-            tasks = await tr.get_by_origin_task(handled_task)
-            tasks.remove(handled_task)
-            second_process_task = [task for task in tasks if task.task_type == TaskType.frames_extract
-                                   or task.task_type == TaskType.transcribe]
-            if len(second_process_task) == 0:
-                need_to_start = True
-            elif second_process_task[0].done:
-                need_to_start = True
-                tasks.remove(second_process_task[0])
-            else:
-                need_to_start = False
-            if need_to_start:
+            tasks = list(filter(lambda task: not task.done, (await tr.get_by_origin_task(handled_task))))
+            if len(tasks) == 1:
                 await send_message_and_cache(broker, redis, tasks[0], handled_task.project_id)
     await redis.delete(f"{RedisType.task_cache}:{handled_task.project_id}:{handled_task.task_type}")
     await redis.set(f"{RedisType.task}:{msg.task_id}", 1, ex=Config.redis_task_status_lifetime)
