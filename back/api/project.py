@@ -1,6 +1,8 @@
 
 
+from copy import deepcopy
 from io import BytesIO
+import shutil
 from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -8,6 +10,7 @@ from deva_p1_db.models import User, File
 from deva_p1_db.repositories import (FileRepository, ProjectRepository,
                                      TaskRepository)
 from fastapi import Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi_controllers import Controller, delete, get, patch, post
 from minio import Minio
 
@@ -39,7 +42,8 @@ class ProjectController(Controller):
                      ) -> ProjectSchema:
         project = await self.pr.get_by_user_and_name(user, create_data.name)
         if project is not None:
-            raise HTTPException(status_code=400, detail="project already exists")
+            raise HTTPException(
+                status_code=400, detail="project already exists")
         project = await self.pr.create(
             holder=user,
             name=create_data.name,
@@ -49,24 +53,23 @@ class ProjectController(Controller):
             raise HTTPException(
                 status_code=500, detail="project creation error")
         return ProjectSchema.from_db(project)
-    
+
     @get("")
     async def list_projects(self,
                             user: User = Depends(get_user_db)
                             ) -> list[ProjectSchema]:
         projects = await self.pr.get_by_user(user)
         return [ProjectSchema.from_db(p) for p in projects]
-    
+
     @get("/{project_id}")
     async def get_by_id(self,
-                  project_id: UUID,
-                  user: UserSchema = Depends(get_user)
-                  ) -> ProjectSchema:
+                        project_id: UUID,
+                        user: UserSchema = Depends(get_user)
+                        ) -> ProjectSchema:
         project = await self.pr.get_by_id(project_id)
         if project is None:
             raise HTTPException(status_code=404, detail="project not found")
         return ProjectSchema.from_db(project)
-    
 
     @delete("/{project_id}")
     async def delete(self,
@@ -119,7 +122,7 @@ class ProjectController(Controller):
         if project.holder_id != user.id:
             raise HTTPException(status_code=403, detail="permission denied")
         return [ActiveTaskSchema.from_db(task) for task in (await self.tr.get_by_project(project)) if task.done is False]
-    
+
     @get("/download/{project_id}")
     async def download_project(self,
                                project_id: UUID,
@@ -131,24 +134,34 @@ class ProjectController(Controller):
             raise HTTPException(status_code=404, detail="project not found")
         if project.holder_id != user.id:
             raise HTTPException(status_code=403, detail="permission denied")
-        if project.summary_id is None:
-            raise HTTPException(status_code=404, detail="summary not found")
-        summary = project.summary
-        transcription = project.transcription
-        images = await self.fr.get_active_images(project)
+        
+        images = deepcopy(await self.fr.get_active_images(project))
+        for image in images:
+            image.file_name = f"images/{image.file_name}"
+        if project.summary is not None:
+            images.append(project.summary)
+        if project.transcription is not None:
+            images.append(project.transcription)
+
         zip_stream = BytesIO()
         with ZipFile(zip_stream, "w", ZIP_DEFLATED) as zip_file:
             for image in images:
                 obj = minio_client.get_object(
                     bucket_name=settings.minio_bucket,
-                    object_name=str(file.id),
+                    object_name=str(image.id),
                 )
-                with zip_file.open(file.user_file_name, "w") as dest_file:
+                with zip_file.open(image.file_name, "w") as dest_file:
                     shutil.copyfileobj(obj, dest_file, length=1024*64)
                 obj.close()
                 obj.release_conn()
 
         zip_stream.seek(0)
+        return StreamingResponse(
+            zip_stream,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{user.login}.zip"'}
+        )
         # for file_id in files_id:
         #     file = await self.fr.get_by_id(UUID(file_id))
         #     if file is None:

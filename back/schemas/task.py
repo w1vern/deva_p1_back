@@ -39,7 +39,4 @@ class ActiveTaskSchema(BaseModel):
 
 class CreatedTaskSchema(BaseModel):
     id: UUID
-
-    @classmethod
-    def from_db(cls, task: Task) -> "CreatedTaskSchema":
-        return cls(**task.__dict__) 
+    subtask_count: int

@@ -13,6 +13,7 @@ class RedisType(str, Enum):
     task = "task"
     task_status = "task_status"
     task_cache = "task_cache"
+    task_error = "task_error"
 
 
 def get_redis_client() -> Redis:

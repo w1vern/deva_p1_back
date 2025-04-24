@@ -52,7 +52,7 @@ class TaskController(Controller):
                 status_code=403,
                 detail="permission denied"
             )
-        if project.origin_file_id is None:
+        if project.origin_file is None:
             raise HTTPException(
                 status_code=400,
                 detail="project has no origin file"
@@ -161,7 +161,7 @@ class TaskController(Controller):
                     await self.session.commit()
                     for task in task_queue:
                         await send_message_and_cache(broker, redis, task, project.id)
-                    return CreatedTaskSchema.from_db(origin_task)
+                    return CreatedTaskSchema(id=origin_task.id, subtask_count=len(task_queue) + 1)
             case _:
                 raise HTTPException(
                     status_code=400,
@@ -180,7 +180,7 @@ class TaskController(Controller):
             )
         await self.session.commit()
         await send_message_and_cache(broker, redis, task, project.id)
-        return CreatedTaskSchema.from_db(task)
+        return CreatedTaskSchema(id=task.id, subtask_count=0)
 
     @get("/sse/{task_id}")
     @sse_handler()
@@ -210,6 +210,12 @@ class TaskController(Controller):
             if await request.is_disconnected():
                 break
             for task in tasks:
+                cached = await redis.get(f"{RedisType.task_error}:{task.id}")
+                if cached:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=cached
+                    )
                 cached = await redis.get(f"{status_cache_key}{task.id}")
                 if cached:
                     if cached != prev_state.get(task.id):
@@ -221,6 +227,7 @@ class TaskController(Controller):
                 cached = await redis.get(f"{done_cache_key_template}{task.id}")
                 if cached:
                     if cached != prev_state_done.get(task.id):
+                        prev_state_done[task.id] = cached
                         yield TaskSchema(id=task.id, done=True, status=1, task_type=task.task_type)
                         counter += 1
             if counter == task_count:

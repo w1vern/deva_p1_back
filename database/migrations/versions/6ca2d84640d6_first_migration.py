@@ -1,17 +1,18 @@
 """first migration
 
-Revision ID: a01ac39f6942
+Revision ID: 6ca2d84640d6
 Revises: 
-Create Date: 2025-04-24 13:41:06.971462
+Create Date: 2025-04-24 21:49:23.107126
 
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
-revision: str = 'a01ac39f6942'
+revision: str = '6ca2d84640d6'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -39,7 +40,7 @@ def upgrade() -> None:
     sa.Column('metadata_is_hide', sa.Boolean(), nullable=True),
     sa.Column('metadata_timecode', sa.Float(), nullable=True),
     sa.Column('metadata_text', sa.String(), nullable=True),
-    sa.Column('task_id', sa.Uuid(), nullable=False),
+    sa.Column('task_id', sa.Uuid(), nullable=True),
     sa.Column('project_id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], name='project_id', initially='DEFERRED', deferrable=True, use_alter=True),
     sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], name='file_metadata_id', initially='DEFERRED', deferrable=True, use_alter=True),

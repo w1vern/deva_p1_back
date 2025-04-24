@@ -1,10 +1,10 @@
 
 
 from uuid import UUID
-from deva_p1_db.enums.rabbit import RabbitQueuesToAi, RabbitQueuesToBack
+from deva_p1_db.enums.rabbit import RabbitQueuesToBack
 from deva_p1_db.enums.task_type import TaskType
 from deva_p1_db.repositories import TaskRepository
-from deva_p1_db.schemas.task import TaskReadyToBack, TaskStatusToBack, TaskToAi
+from deva_p1_db.schemas.task import TaskReadyToBack, TaskStatusToBack, TaskToAi, TaskErrorToBack
 from deva_p1_db.models import Task
 from fastapi import Depends
 from faststream.rabbit import RabbitBroker, RabbitQueue, fastapi
@@ -35,21 +35,54 @@ async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: Tas
     await broker.publish(data, queue)
 
 
-@router.subscriber(RabbitQueuesToBack.done_task)
-async def handle_done_task(msg: TaskReadyToBack, session: Session, broker: RabbitBroker = Depends(get_broker), redis: Redis = Depends(get_redis_client)):
+@router.subscriber(RabbitQueuesToBack.done_task) # TODO: fix origin task
+async def handle_done_task(msg: TaskReadyToBack,
+                           session: Session,
+                           broker: RabbitBroker = Depends(get_broker),
+                           redis: Redis = Depends(get_redis_client)
+                           ):
     tr = TaskRepository(session)
     handled_task = await tr.get_by_id(msg.task_id)
     if handled_task is None:
         raise Exception("got incorrect task id from ai")
+        
     if handled_task.origin_task_id is not None:
-        if handled_task.task_type == TaskType.frames_extract or handled_task.task_type == TaskType.transcribe:
-            tasks = list(filter(lambda task: not task.done, (await tr.get_by_origin_task(handled_task))))
+        if handled_task.task_type == TaskType.frames_extract.value or handled_task.task_type == TaskType.transcribe.value:
+            origin_task = await tr.get_by_id(handled_task.origin_task_id)
+            if origin_task is None:
+                raise Exception("logic error")
+            tasks = [task for task in (await tr.get_by_origin_task(origin_task)) if task.done is False]
             if len(tasks) == 1:
                 await send_message_and_cache(broker, redis, tasks[0], handled_task.project_id)
+                await redis.set(f"{RedisType.task_status}:{tasks[0].id}", 0.0, ex=Config.redis_task_status_lifetime)
     await redis.delete(f"{RedisType.task_cache}:{handled_task.project_id}:{handled_task.task_type}")
     await redis.set(f"{RedisType.task}:{msg.task_id}", 1, ex=Config.redis_task_status_lifetime)
 
 
 @router.subscriber(RabbitQueuesToBack.progress_task)
-async def handle_progress_task(msg: TaskStatusToBack, redis: Redis = Depends(get_redis_client)):
+async def handle_progress_task(msg: TaskStatusToBack,
+                               redis: Redis = Depends(get_redis_client)
+                               ):
     await redis.set(f"{RedisType.task_status}:{msg.task_id}", msg.progress, ex=Config.redis_task_status_lifetime)
+
+
+@router.subscriber(RabbitQueuesToBack.error_task)
+async def handle_error_task(msg: TaskErrorToBack,
+                            session: Session,
+                            redis: Redis = Depends(get_redis_client)
+                            ):
+    tr = TaskRepository(session)
+    handled_task = await tr.get_by_id(msg.task_id)
+    if handled_task is None:
+        raise Exception("got incorrect task id from ai")
+    await tr.task_done(handled_task)
+    if handled_task.origin_task_id is not None:
+        origin_task = await tr.get_by_id(handled_task.origin_task_id)
+        if origin_task is None:
+            raise Exception("logic error")
+        tasks = await tr.get_by_origin_task(origin_task)
+        for task in tasks:
+            await tr.task_done(task)
+            await redis.delete(f"{RedisType.task_cache}:{task.project_id}:{task.task_type}")
+        await tr.task_done(origin_task)
+    await redis.set(f"{RedisType.task_error}:{handled_task.id}", msg.error, ex=Config.redis_task_status_lifetime)

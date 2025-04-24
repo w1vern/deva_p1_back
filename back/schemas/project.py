@@ -23,8 +23,8 @@ class ProjectSchema(BaseModel):
     created_date: datetime
     last_modified_date: datetime
     origin_file_id: UUID | None = None
-    transcription_file_id: UUID | None = None
-    summary_file_id: UUID | None = None
+    transcription_id: UUID | None = None
+    summary_id: UUID | None = None
     frames_extract_done: bool
 
     @classmethod
