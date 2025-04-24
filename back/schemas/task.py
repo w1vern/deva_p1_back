@@ -35,3 +35,11 @@ class ActiveTaskSchema(BaseModel):
     @classmethod
     def from_db(cls, task: Task) -> "ActiveTaskSchema":
         return cls(**task.__dict__)
+    
+
+class CreatedTaskSchema(BaseModel):
+    id: UUID
+
+    @classmethod
+    def from_db(cls, task: Task) -> "CreatedTaskSchema":
+        return cls(**task.__dict__) 

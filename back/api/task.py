@@ -17,7 +17,8 @@ from redis.asyncio import Redis
 from back.broker import get_broker, send_message_and_cache
 from back.config import Config
 from back.get_auth import get_user, get_user_db
-from back.schemas.task import (ActiveTaskSchema, TaskCreateSchema, TaskSchema)
+from back.schemas.task import (
+    ActiveTaskSchema, CreatedTaskSchema, TaskCreateSchema, TaskSchema)
 from back.schemas.user import UserSchema
 from database.db import Session
 from database.redis import RedisType, get_redis_client
@@ -38,7 +39,8 @@ class TaskController(Controller):
                           new_task: TaskCreateSchema,
                           user: User = Depends(get_user_db),
                           broker: RabbitBroker = Depends(get_broker),
-                          redis: Redis = Depends(get_redis_client)):
+                          redis: Redis = Depends(get_redis_client)
+                          ) -> CreatedTaskSchema:
         project = await self.pr.get_by_id(new_task.project_id)
         if project is None:
             raise HTTPException(
@@ -159,7 +161,7 @@ class TaskController(Controller):
                     await self.session.commit()
                     for task in task_queue:
                         await send_message_and_cache(broker, redis, task, project.id)
-                    return ActiveTaskSchema.from_db(origin_task)
+                    return CreatedTaskSchema.from_db(origin_task)
             case _:
                 raise HTTPException(
                     status_code=400,
@@ -178,7 +180,7 @@ class TaskController(Controller):
             )
         await self.session.commit()
         await send_message_and_cache(broker, redis, task, project.id)
-        return ActiveTaskSchema.from_db(task)
+        return CreatedTaskSchema.from_db(task)
 
     @get("/sse/{task_id}")
     @sse_handler()
@@ -192,6 +194,7 @@ class TaskController(Controller):
         status_cache_key = f"{RedisType.task_status}:"
         main_task = await self.tr.get_by_id(task_id)
         prev_state = {}
+        prev_state_done = {}
         if main_task is None:
             raise HTTPException(status_code=404, detail="task not found")
         if main_task.origin_task_id is None:
@@ -217,8 +220,9 @@ class TaskController(Controller):
                                          task_type=task.task_type)
                 cached = await redis.get(f"{done_cache_key_template}{task.id}")
                 if cached:
-                    yield TaskSchema(id=task.id, done=True, status=1, task_type=task.task_type)
-                    counter += 1
+                    if cached != prev_state_done.get(task.id):
+                        yield TaskSchema(id=task.id, done=True, status=1, task_type=task.task_type)
+                        counter += 1
             if counter == task_count:
                 break
             if iterations > Config.sse_max_iterations:
