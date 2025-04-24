@@ -37,7 +37,7 @@ async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: Tas
     await broker.publish(data, queue)
 
 
-@router.subscriber(RabbitQueuesToBack.done_task) # TODO: fix origin task
+@router.subscriber(RabbitQueuesToBack.done_task)  # TODO: fix origin task
 async def handle_done_task(msg: TaskReadyToBack,
                            session: Session,
                            broker: RabbitBroker = Depends(get_broker),
@@ -47,7 +47,7 @@ async def handle_done_task(msg: TaskReadyToBack,
     handled_task = await tr.get_by_id(msg.task_id)
     if handled_task is None:
         raise Exception("got incorrect task id from ai")
-        
+
     if handled_task.origin_task_id is not None:
         if handled_task.task_type == TaskType.frames_extract.value or handled_task.task_type == TaskType.transcribe.value:
             origin_task = await tr.get_by_id(handled_task.origin_task_id)
@@ -65,7 +65,9 @@ async def handle_done_task(msg: TaskReadyToBack,
 async def handle_progress_task(msg: TaskStatusToBack,
                                redis: Redis = Depends(get_redis_client)
                                ):
-    await redis.set(f"{RedisType.task_status}:{msg.task_id}", msg.progress, ex=Config.redis_task_status_lifetime)
+    await redis.set(f"{RedisType.task_status}:{msg.task_id}",
+                    msg.progress,
+                    ex=Config.redis_task_status_lifetime)
 
 
 @router.subscriber(RabbitQueuesToBack.error_task)
