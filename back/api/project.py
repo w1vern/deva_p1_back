@@ -99,7 +99,7 @@ class ProjectController(Controller):
         files = await self.fr.get_by_project(project)
         return [FileSchema.from_db(f) for f in files]
 
-    @get("get_active_tasks/{project_id}")
+    @get("/get_active_tasks/{project_id}")
     async def get_active_tasks(self,
                                project_id: str,
                                user: UserSchema = Depends(get_user)
