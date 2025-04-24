@@ -45,6 +45,13 @@ class ProjectController(Controller):
                 status_code=500, detail="project creation error")
         return ProjectSchema.from_db(project)
     
+    @get("")
+    async def list_projects(self,
+                            user: User = Depends(get_user_db)
+                            ) -> list[ProjectSchema]:
+        projects = await self.pr.get_by_user(user)
+        return [ProjectSchema.from_db(p) for p in projects]
+    
     @get("/{project_id}")
     async def get_by_id(self,
                   project_id: UUID,
@@ -54,6 +61,7 @@ class ProjectController(Controller):
         if project is None:
             raise HTTPException(status_code=404, detail="project not found")
         return ProjectSchema.from_db(project)
+    
 
     @delete("/{project_id}")
     async def delete(self,
@@ -65,13 +73,6 @@ class ProjectController(Controller):
             raise HTTPException(status_code=404, detail="project not found")
         await self.pr.delete(project)
         return {"message": "OK"}
-
-    @get("/list")
-    async def list_projects(self,
-                            user: User = Depends(get_user_db)
-                            ) -> list[ProjectSchema]:
-        projects = await self.pr.get_by_user(user)
-        return [ProjectSchema.from_db(p) for p in projects]
 
     @patch("/{project_id}")
     async def update(self,
