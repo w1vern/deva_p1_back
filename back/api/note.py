@@ -63,15 +63,16 @@ class NoteController(Controller):
             raise HTTPException(status_code=404, detail="note not found")
         if note.file.user_id != user.id:
             raise HTTPException(status_code=403, detail="permission denied")
-        note = await self.nr.update(note,
-                                    update_data.new_text,
-                                    update_data.new_start_time_code,
-                                    update_data.new_end_time_code)
+        await self.nr.update(note,
+                             update_data.new_text,
+                             update_data.new_start_time_code,
+                             update_data.new_end_time_code)
+        note = await self.nr.get_by_id(note_id)
         if note is None:
             raise HTTPException(
                 status_code=500, detail="internal server error")
         return NoteSchema.from_db(note)
-    
+
     @delete("/{note_id}")
     async def delete_note(self,
                           note_id: UUID,
