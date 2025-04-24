@@ -1,11 +1,13 @@
 
 
 from uuid import UUID
+
 from deva_p1_db.enums.rabbit import RabbitQueuesToBack
 from deva_p1_db.enums.task_type import TaskType
-from deva_p1_db.repositories import TaskRepository
-from deva_p1_db.schemas.task import TaskReadyToBack, TaskStatusToBack, TaskToAi, TaskErrorToBack
 from deva_p1_db.models import Task
+from deva_p1_db.repositories import TaskRepository
+from deva_p1_db.schemas.task import (TaskErrorToBack, TaskReadyToBack,
+                                     TaskStatusToBack, TaskToAi)
 from fastapi import Depends
 from faststream.rabbit import RabbitBroker, RabbitQueue, fastapi
 from redis.asyncio import Redis

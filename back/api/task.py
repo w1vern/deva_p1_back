@@ -17,8 +17,8 @@ from redis.asyncio import Redis
 from back.broker import get_broker, send_message_and_cache
 from back.config import Config
 from back.get_auth import get_user, get_user_db
-from back.schemas.task import (
-    ActiveTaskSchema, CreatedTaskSchema, TaskCreateSchema, TaskSchema)
+from back.schemas.task import (ActiveTaskSchema, CreatedTaskSchema,
+                               TaskCreateSchema, TaskSchema)
 from back.schemas.user import UserSchema
 from database.db import Session
 from database.redis import RedisType, get_redis_client

@@ -1,12 +1,12 @@
 
 
+import shutil
 from copy import deepcopy
 from io import BytesIO
-import shutil
 from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from deva_p1_db.models import User, File
+from deva_p1_db.models import File, User
 from deva_p1_db.repositories import (FileRepository, ProjectRepository,
                                      TaskRepository)
 from fastapi import Depends, HTTPException
@@ -20,9 +20,9 @@ from back.schemas.project import (CreateProjectSchema, EditProjectSchema,
                                   ProjectSchema)
 from back.schemas.task import ActiveTaskSchema
 from back.schemas.user import UserSchema
+from config import settings
 from database.db import Session
 from database.s3 import get_s3_client
-from config import settings
 
 
 class ProjectController(Controller):
