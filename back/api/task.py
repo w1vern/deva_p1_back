@@ -166,7 +166,6 @@ class TaskController(Controller):
                     await self.session.commit()
                     for task in task_queue:
                         await send_message_and_cache(broker, redis, task, project.id)
-                    asyncio.create_task
                     return ActiveTaskSchema.from_db(origin_task)
             case _:
                 raise HTTPException(

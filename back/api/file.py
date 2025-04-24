@@ -74,7 +74,7 @@ class FileController(Controller):
             file_size = len(file_data)
 
             db_file = await self.fr.create(
-                user_file_name=file.filename,
+                file_name=file.filename,
                 file_type=content_type,
                 user=user,
                 file_size=file_size,
