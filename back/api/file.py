@@ -4,10 +4,10 @@ from database.s3 import get_s3_client
 from database.db import Session
 from config import settings
 from back.schemas.user import UserSchema
-from back.schemas.file import FileSchema
+from back.schemas.file import FileEditSchema, FileSchema
 from back.get_auth import get_user, get_user_db
 from minio import Minio, S3Error
-from fastapi_controllers import Controller, get, post
+from fastapi_controllers import Controller, get, patch, post, delete
 from fastapi.responses import StreamingResponse
 from fastapi import Depends, File, HTTPException, Request, UploadFile
 from deva_p1_db.repositories import FileRepository, ProjectRepository
@@ -30,7 +30,7 @@ class FileController(Controller):
         self.fr = FileRepository(self.session)
         self.pr = ProjectRepository(self.session)
 
-    @post("/upload")
+    @post("")
     async def upload_file(self,
                           project_id: UUID,
                           file: Annotated[UploadFile, File(...)],
@@ -114,6 +114,72 @@ class FileController(Controller):
                 await self.pr.add_summary_file(project, db_file)
 
         return FileSchema.from_db(db_file)
+
+    @patch("/{file_id}")
+    async def update_file(self,
+                          file_id: UUID,
+                          edited_fields: FileEditSchema,
+                          user: UserSchema = Depends(get_user),
+                          ) -> FileSchema:
+        file = await self.fr.get_by_id(file_id)
+        if file is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"file {file_id} not found"
+            )
+        if file.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="permission denied"
+            )
+        await self.fr.update_metadata(
+            file=file,
+            is_hide=edited_fields.metadata_is_hide,
+            timecode=edited_fields.metadata_timecode,
+            text=edited_fields.metadata_text,
+            file_name=edited_fields.file_name)
+        file = await self.fr.get_by_id(file_id)
+        if file is None:
+            raise HTTPException(
+                status_code=500,
+                detail=f"internal server error"
+            )
+        return FileSchema.from_db(file)
+    
+    @delete("/{file_id}")
+    async def hide_file(self,
+                          file_id: UUID,
+                          user: UserSchema = Depends(get_user)
+                          ) -> None:
+        file = await self.fr.get_by_id(file_id)
+        if file is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"file {file_id} not found"
+            )
+        project = file.project
+        if file.user_id != user.id:
+            raise HTTPException(
+                status_code=403,
+                detail="permission denied"
+            )
+        category = resolve_file_type(file.file_type).category
+        go_down = False
+        match category:
+            case FileCategory.audio.value:
+                go_down = True
+            case value if value is FileCategory.video.value or go_down:
+                if project.origin_file_id != file_id:
+                    await self.pr.delete_origin_file(project)
+                    await self.pr.delete_transcription_file(project)
+                    await self.pr.delete_summary_file(project)
+            case FileCategory.transcribe.value:
+                if project.transcription_id != file_id:
+                    await self.pr.delete_transcription_file(project)
+                    await self.pr.delete_summary_file(project)
+            case FileCategory.summary.value:
+                if project.summary_id != file_id:
+                    await self.pr.delete_summary_file(project)
 
     @get("/download/{file_id}")
     async def download_file(self,
