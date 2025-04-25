@@ -17,7 +17,7 @@ from redis.asyncio import Redis
 from back.broker import get_broker, send_message_and_cache
 from back.config import Config
 from back.get_auth import get_user, get_user_db
-from back.schemas.task import (ActiveTaskSchema, CreatedTaskSchema,
+from back.schemas.task import (ActiveTaskSchema,
                                TaskCreateSchema, TaskSchema)
 from back.schemas.user import UserSchema
 from database.db import Session
@@ -40,7 +40,7 @@ class TaskController(Controller):
                           user: User = Depends(get_user_db),
                           broker: RabbitBroker = Depends(get_broker),
                           redis: Redis = Depends(get_redis_client)
-                          ) -> CreatedTaskSchema:
+                          ) -> ActiveTaskSchema:
         project = await self.pr.get_by_id(new_task.project_id)
         if project is None:
             raise HTTPException(
@@ -161,7 +161,8 @@ class TaskController(Controller):
                     await self.session.commit()
                     for task in task_queue:
                         await send_message_and_cache(broker, redis, task, project.id)
-                    return CreatedTaskSchema(id=origin_task.id, subtask_count=len(task_queue) + 1)
+                    await self.tr.add_subtask_count(origin_task, len(task_queue) + 1)
+                    return ActiveTaskSchema.from_db(origin_task)
             case _:
                 raise HTTPException(
                     status_code=400,
@@ -180,7 +181,7 @@ class TaskController(Controller):
             )
         await self.session.commit()
         await send_message_and_cache(broker, redis, task, project.id)
-        return CreatedTaskSchema(id=task.id, subtask_count=0)
+        return ActiveTaskSchema.from_db(task)
 
     @get("/sse/{task_id}")
     @sse_handler()

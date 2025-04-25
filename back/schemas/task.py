@@ -31,12 +31,9 @@ class RedisTaskCacheSchema(BaseModel):
 class ActiveTaskSchema(BaseModel):
     id: UUID
     task_type: str
+    subtask_count: int
 
     @classmethod
     def from_db(cls, task: Task) -> "ActiveTaskSchema":
         return cls(**task.__dict__)
     
-
-class CreatedTaskSchema(BaseModel):
-    id: UUID
-    subtask_count: int

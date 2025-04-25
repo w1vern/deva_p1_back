@@ -1,17 +1,18 @@
 """first migration
 
-Revision ID: 6ca2d84640d6
+Revision ID: eea52f5c5330
 Revises: 
-Create Date: 2025-04-24 21:49:23.107126
+Create Date: 2025-04-25 10:43:08.706774
 
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
+
 
 # revision identifiers, used by Alembic.
-revision: str = '6ca2d84640d6'
+revision: str = 'eea52f5c5330'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -85,6 +86,7 @@ def upgrade() -> None:
     sa.Column('done', sa.Boolean(), nullable=False),
     sa.Column('task_type', sa.String(), nullable=False),
     sa.Column('prompt', sa.String(), nullable=False),
+    sa.Column('subtask_count', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Uuid(), nullable=False),
     sa.Column('user_id', sa.Uuid(), nullable=False),
     sa.Column('origin_task_id', sa.Uuid(), nullable=True),
