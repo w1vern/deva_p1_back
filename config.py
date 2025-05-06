@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     minio_port: int = 9000
     minio_access_key: str = "MINIO_ACCESS_KEY"
     minio_secret_key: str = "NINIO_SECRET_KEY"
+    minio_user: str = "minioadmin"
+    minio_password: str = "minioadmin"
     minio_bucket: str = "my-bucket"
     minio_secure: bool = False
     

@@ -10,7 +10,8 @@ from redis.asyncio import Redis
 
 from back.config import Config
 from back.get_auth import get_user, get_user_db
-from back.schemas.user import CredsSchema, RegisterSchema, UserSchema
+from back.schemas.user import (CredsSchema, RegisterSchema, UserSchema,
+                               UserUpdateSchema)
 from back.token import AccessToken, RefreshToken
 from database.db import Session
 from database.redis import RedisType, get_redis_client
@@ -25,7 +26,10 @@ class AuthController(Controller):
         self.ur = UserRepository(self.session)
 
     @post("/refresh")
-    async def refresh(self, response: Response, session: Session, refresh_token: str = Cookie(None)):
+    async def refresh(self,
+                      response: Response,
+                      refresh_token: str = Cookie(None)
+                      ):
         if refresh_token is None:
             raise HTTPException(
                 status_code=401, detail="refresh token doesn't exist")
@@ -47,7 +51,11 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/register")
-    async def register(self, request: Request, response: Response, register_data: RegisterSchema, redis: Redis = Depends(get_redis_client)):
+    async def register(self,
+                       request: Request,
+                       register_data: RegisterSchema,
+                       redis: Redis = Depends(get_redis_client)
+                       ):
         lock_time = await redis.ttl(f"{RedisType.invalidated_access_token}:{register_data.login}")
         if lock_time > 0:
             raise HTTPException(
@@ -63,9 +71,9 @@ class AuthController(Controller):
         if register_data.password != register_data.password_repeat:
             raise HTTPException(
                 status_code=401, detail="passwords do not match")
-        if not await self.ur.get_by_auth(register_data.login, register_data.password) is None:
+        if await self.ur.get_by_login(register_data.login) is not None:
             raise HTTPException(
-                status_code=401, detail="user with this creds is already exists")
+                status_code=401, detail="user with this login is already exists")
         user = await self.ur.create(register_data.login, register_data.password)
         if user is None:
             raise HTTPException(
@@ -73,7 +81,12 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/login")
-    async def login(self, request: Request, response: Response, credentials: CredsSchema, redis: Redis = Depends(get_redis_client)):
+    async def login(self,
+                    request: Request,
+                    response: Response,
+                    credentials: CredsSchema,
+                    redis: Redis = Depends(get_redis_client)
+                    ):
         lock_time = await redis.ttl(f"{RedisType.invalidated_access_token}:{credentials.login}")
         if lock_time > 0:
             raise HTTPException(
@@ -99,7 +112,10 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/logout")
-    async def logout(self, response: Response, refresh_token: str = Cookie(None)):
+    async def logout(self,
+                     response: Response,
+                     refresh_token: str = Cookie(None)
+                     ):
         if refresh_token is None:
             raise HTTPException(status_code=401, detail="unauthorized")
         response.delete_cookie(key="refresh_token")
@@ -107,7 +123,10 @@ class AuthController(Controller):
         return {"message": "OK"}
 
     @post("/logout_all")
-    async def logout_all(self, response: Response, user: User = Depends(get_user_db)):
+    async def logout_all(self,
+                         response: Response,
+                         user: User = Depends(get_user_db)
+                         ):
         await self.ur.update_secret(user)
         response.delete_cookie(key="refresh_token")
         response.delete_cookie(key="access_token")
@@ -115,14 +134,12 @@ class AuthController(Controller):
 
     @patch("/update_credentials")
     async def update_creds(self,
-                           new_login: Optional[str] = None,
-                           new_password: Optional[str] = None,
-                           new_password_repeat: Optional[str] = None,
+                           user_update: UserUpdateSchema,
                            user: User = Depends(get_user_db)):
-        if new_password != new_password_repeat:
+        if user_update.new_password != user_update.new_password_repeat:
             raise HTTPException(
                 status_code=401, detail="passwords do not match")
-        await self.ur.update_credentials(user, new_login, new_password)
+        await self.ur.update_credentials(user, user_update.new_login, user_update.new_password)
         return {"message": "OK"}
 
     @get("/user_info")
