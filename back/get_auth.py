@@ -32,3 +32,4 @@ async def get_user_db(session: Session, user: UserSchema = Depends(get_user)) ->
     if user_db is None:
         raise HTTPException(status_code=401, detail="send feedback to admin")
     return user_db
+

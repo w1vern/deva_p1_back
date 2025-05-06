@@ -1,4 +1,5 @@
 
+from datetime import datetime
 from uuid import UUID
 
 from deva_p1_db.models import Project
@@ -11,24 +12,21 @@ class CreateProjectSchema(BaseModel):
 
 
 class EditProjectSchema(BaseModel):
-    id: str
-    name: str | None
-    description: str | None
+    name: str | None = None
+    description: str | None = None
 
 
 class ProjectSchema(BaseModel):
-    id: str
+    id: UUID
     name: str
     description: str
-    created_date: str
-    last_modified_date: str
+    created_date: datetime
+    last_modified_date: datetime
+    origin_file_id: UUID | None = None
+    transcription_id: UUID | None = None
+    summary_id: UUID | None = None
+    frames_extract_done: bool
 
     @classmethod
     def from_db(cls, project: Project) -> "ProjectSchema":
-        return cls(
-            id=str(project.id),
-            name=project.name,
-            description=project.description,
-            created_date=project.created_date.isoformat(),
-            last_modified_date=project.last_modified_date.isoformat())
-    
+        return cls(**project.__dict__)
