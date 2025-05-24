@@ -5,7 +5,7 @@ back:
 	set TARGET=dev&& uvicorn back.main:app --reload
 
 back_install:
-	poetry install
+	uv sync
 
 redis:
 	docker start Redis
@@ -51,10 +51,10 @@ delete_migrations:
 	del database\migrations\versions\*
 
 add_db:
-	poetry add git+https://github.com/w1vern/deva_p1_db
+	uv add git+https://github.com/w1vern/deva_p1_db
 
 delete_db:
-	poetry remove deva_p1_db
+	uv remove deva_p1_db
 
 update_db:
-	poetry update deva_p1_db
+	uv update deva_p1_db
