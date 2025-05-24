@@ -57,4 +57,4 @@ delete_db:
 	uv remove deva_p1_db
 
 update_db:
-	uv update deva_p1_db
+	uv add -U deva_p1_db

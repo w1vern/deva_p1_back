@@ -21,9 +21,12 @@ dependencies = [
     "alembic>=1.15.2",
     "python-multipart>=0.0.20",
     "fastapi-sse>=1.1.1",
-    "deva-p1-db @ git+https://github.com/w1vern/deva_p1_db@dev",
+    "deva-p1-db",
 ]
 
 [dependency-groups]
 dev = ["isort>=6.0.1"]
+
+[tool.uv.sources]
+deva-p1-db = { git = "https://github.com/w1vern/deva_p1_db@dev" }
 
