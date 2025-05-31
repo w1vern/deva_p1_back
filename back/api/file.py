@@ -9,7 +9,7 @@ from back.get_auth import get_user, get_user_db
 from minio import Minio, S3Error
 from fastapi_controllers import Controller, get, patch, post, delete
 from fastapi.responses import StreamingResponse
-from fastapi import Depends, File, HTTPException, Request, UploadFile
+from fastapi import Depends, File, Request, UploadFile
 from deva_p1_db.repositories import FileRepository, ProjectRepository
 from deva_p1_db.models import User
 import mimetypes
@@ -17,6 +17,7 @@ import re
 from io import BytesIO
 from typing import Annotated
 from uuid import UUID
+from back.exceptions import *
 
 from deva_p1_db.enums.file_type import FileCategory, resolve_file_type
 
@@ -40,33 +41,27 @@ class FileController(Controller):
 
         project = await self.pr.get_by_id(project_id)
         if project is None:
-            raise HTTPException(
-                status_code=404,
-                detail="project not found"
-            )
+            raise ProjectNotFoundException(project_id)
         if file.filename is None:
             file.filename = ""
 
         content_type = mimetypes.guess_type(file.filename)[0]
         if content_type is None:
-            raise HTTPException(
-                status_code=400,
-                detail="undefined file type"
-            )
+            raise UndefinedFileTypeException()
         file_type = resolve_file_type(content_type)
         file_category = file_type.category
 
-        if file_category not in [FileCategory.audio.value, FileCategory.video.value, FileCategory.image.value, FileCategory.summary, FileCategory.transcribe]:
-            raise HTTPException(
-                status_code=400,
-                detail="invalid file type"
-            )
+        if file_category not in [FileCategory.audio.value,
+                                 FileCategory.video.value,
+                                 FileCategory.image.value,
+                                 FileCategory.summary,
+                                 FileCategory.transcribe]:
+            raise InvalidFileTypeException()
 
-        if file_category in [FileCategory.audio.value, FileCategory.video.value] and project.origin_file_id is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="project already has origin file"
-            )
+        if file_category in [FileCategory.audio.value,
+                             FileCategory.video.value] \
+                and project.origin_file_id is not None:
+            raise ProjectAlreadyHasOriginFileException()
 
         file_data = await file.read()
         file_size = len(file_data)
@@ -80,10 +75,7 @@ class FileController(Controller):
         )
 
         if db_file is None:
-            raise HTTPException(
-                status_code=500,
-                detail="server error"
-            )
+            raise SendFeedbackToAdminException()
 
         try:
             minio_client.put_object(
@@ -95,10 +87,7 @@ class FileController(Controller):
             )
         except S3Error as e:
             await self.session.rollback()
-            raise HTTPException(
-                status_code=404,
-                detail=f"MinIO error: {e.message}"
-            )
+            raise MinioException(e.message)
         finally:
             await file.close()
 
@@ -123,15 +112,9 @@ class FileController(Controller):
                           ) -> FileSchema:
         file = await self.fr.get_by_id(file_id)
         if file is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"file {file_id} not found"
-            )
+            raise FileNotFoundException(file_id)
         if file.user_id != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="permission denied"
-            )
+            raise PermissionDeniedException()
         await self.fr.update_metadata(
             file=file,
             is_hide=edited_fields.metadata_is_hide,
@@ -140,29 +123,20 @@ class FileController(Controller):
             file_name=edited_fields.file_name)
         file = await self.fr.get_by_id(file_id)
         if file is None:
-            raise HTTPException(
-                status_code=500,
-                detail=f"internal server error"
-            )
+            raise SendFeedbackToAdminException()
         return FileSchema.from_db(file)
-    
+
     @delete("/{file_id}")
     async def hide_file(self,
-                          file_id: UUID,
-                          user: UserSchema = Depends(get_user)
-                          ) -> None:
+                        file_id: UUID,
+                        user: UserSchema = Depends(get_user)
+                        ) -> None:
         file = await self.fr.get_by_id(file_id)
         if file is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"file {file_id} not found"
-            )
+            raise FileNotFoundException(file_id)
         project = file.project
         if file.user_id != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="permission denied"
-            )
+            raise PermissionDeniedException()
         category = resolve_file_type(file.file_type).category
         go_down = False
         match category:
@@ -189,25 +163,16 @@ class FileController(Controller):
                             ):
         file = await self.fr.get_by_id(file_id)
         if file is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"file {file_id} not found"
-            )
+            raise FileNotFoundException(file_id)
         if file.user_id != user.id:
-            raise HTTPException(
-                status_code=403,
-                detail="permission denied"
-            )
+            raise PermissionDeniedException()
         try:
             response = minio_client.get_object(
                 bucket_name=settings.minio_bucket,
                 object_name=str(file.id),
             )
         except S3Error as e:
-            raise HTTPException(
-                status_code=404,
-                detail=f"MinIO error: {e.message}"
-            )
+            raise MinioException(e.message)
         return StreamingResponse(
             response,
             media_type="application/octet-stream",
@@ -222,12 +187,11 @@ class FileController(Controller):
                            ):
         range_header = request.headers.get("range")
         if range_header is None:
-            raise HTTPException(
-                status_code=416, detail="Range header required")
+            raise RangeHeaderRequiredException()
 
         match = re.match(r"bytes=(\d+)-(\d*)", range_header)
         if not match:
-            raise HTTPException(status_code=416, detail="Invalid Range header")
+            raise InvalidRangeHeaderException()
 
         start = int(match.group(1))
         end = int(match.group(2)) if match.group(2) else None
@@ -238,7 +202,7 @@ class FileController(Controller):
                 settings.minio_bucket, str(file_id))
             file_size = stat.size
             if file_size is None:
-                raise HTTPException(status_code=404, detail="File not found")
+                raise FileNotFoundException(file_id)
 
             if end is None or end >= file_size:
                 end = file_size - 1
@@ -253,10 +217,7 @@ class FileController(Controller):
             )
 
         except S3Error as e:
-            raise HTTPException(
-                status_code=404,
-                detail=f"MinIO error: {e.message}"
-            )
+            raise MinioException(e.message)
 
         headers = {
             "Content-Range": f"bytes {start}-{end}/{file_size}",
