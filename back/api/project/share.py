@@ -10,6 +10,7 @@ from back.depends import (get_invited_user, get_invited_user_repo,
                           get_user_db)
 from back.exceptions import *
 from back.schemas import UserSchema
+from back.schemas.project import ProjectSchema
 
 router = APIRouter(prefix="/share", tags=["share"])
 
@@ -39,7 +40,15 @@ async def unshare_project(project: Project = Depends(get_project_by_invited_user
     return {"message": "OK"}
 
 
-@router.get("/{project_id}")
+@router.get("/projects/{user_id}")
+async def get_invited_projects(user: User = Depends(get_user_db),
+                               iur: InvitedUserRepository = Depends(
+                                   get_invited_user_repo)
+                               ) -> list[ProjectSchema]:
+    return [ProjectSchema.from_db(ir.project) for ir in await iur.get_by_user(user)]
+
+
+@router.get("/users/{project_id}")
 async def get_invited_users_list(project: Project = Depends(get_project),
                                  user: User = Depends(get_project_editor),
                                  iur: InvitedUserRepository = Depends(
