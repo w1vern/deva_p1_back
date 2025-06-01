@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from deva_p1_db.models import User
-from deva_p1_db.repositories.user_repository import UserRepository
+from deva_p1_db.repositories import UserRepository
 from fastapi import Cookie, Depends
 from redis.asyncio import Redis
 
@@ -9,6 +9,7 @@ from back.exceptions import *
 from back.schemas.user import UserSchema
 from back.token import AccessToken
 from database.redis import RedisType, get_redis_client
+
 from .database import get_user_repo
 
 
@@ -35,3 +36,6 @@ async def get_user_db(user: UserSchema = Depends(get_user),
     if user_db is None:
         raise SendFeedbackToAdminException()
     return user_db
+
+
+

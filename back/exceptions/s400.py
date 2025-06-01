@@ -77,3 +77,13 @@ class OriginFileIsAudioException(BaseCustomHTTPException):
 class InvalidTaskTypeException(BaseCustomHTTPException):
     def __init__(self):
         super().__init__(400, "Task type is invalid")
+
+
+class UserAlreadyInvitedException(BaseCustomHTTPException):
+    def __init__(self):
+        super().__init__(400, "User is already invited")
+
+
+class UserNotInvitedException(BaseCustomHTTPException):
+    def __init__(self):
+        super().__init__(400, "User is not invited")

@@ -1,9 +1,9 @@
 
+from deva_p1_db.repositories import (FileRepository, InvitedUserRepository,
+                                     NoteRepository, ProjectRepository,
+                                     TaskRepository, UserRepository)
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from deva_p1_db.repositories import (UserRepository, FileRepository,
-                                     ProjectRepository, InvitedUserRepository,
-                                     TaskRepository, NoteRepository)
 
 from database.database import session_manager
 

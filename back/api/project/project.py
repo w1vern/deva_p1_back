@@ -14,10 +14,9 @@ from minio import Minio
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from back.depends import (get_project, get_project_editor,
-                          get_project_viewer, get_user_db,
-                          get_project_repo, get_file_repo,
-                          get_task_repo)
+from back.depends import (get_file_repo, get_project, get_project_editor,
+                          get_project_repo, get_project_viewer, get_task_repo,
+                          get_user_db)
 from back.exceptions import *
 from back.schemas.file import FileSchema
 from back.schemas.project import (CreateProjectSchema, EditProjectSchema,
@@ -29,8 +28,11 @@ from database.database import session_manager
 from database.redis import get_redis_client
 from database.s3 import get_s3_client
 
+from .share import router as share_router
 
 router = APIRouter(prefix="/project", tags=["project"])
+
+router.include_router(share_router)
 
 
 @router.post("")

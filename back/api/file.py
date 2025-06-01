@@ -13,17 +13,16 @@ from fastapi import File as fastapi_file
 from fastapi import Request, UploadFile
 from fastapi.responses import StreamingResponse
 from minio import Minio, S3Error
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from back.depends import (get_file, get_file_editor, get_file_viewer,
-                          get_project, get_project_editor, get_file_repo)
+from back.depends import (get_file, get_file_editor, get_file_repo,
+                          get_file_viewer, get_project, get_project_editor)
 from back.exceptions import *
 from back.schemas.file import FileEditSchema, FileSchema
 from back.schemas.user import UserSchema
 from config import settings
-from database.s3 import get_s3_client
 from database.database import session_manager
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from database.s3 import get_s3_client
 
 router = APIRouter(prefix="/file", tags=["file"])
 

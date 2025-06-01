@@ -4,6 +4,10 @@ from uuid import UUID
 from .base import BaseCustomHTTPException
 
 
+class UserNotFoundException(BaseCustomHTTPException):
+    def __init__(self, user_id: UUID):
+        super().__init__(404, f"User not found, user_id: {user_id}")
+
 class ProjectNotFoundException(BaseCustomHTTPException):
     def __init__(self, project_id: UUID):
         super().__init__(404, f"Project not found, project_id: {project_id}")

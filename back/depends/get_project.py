@@ -8,8 +8,8 @@ from fastapi import Depends
 
 from back.exceptions import PermissionDeniedException, ProjectNotFoundException
 
+from .database import get_invited_user_repo, get_project_repo
 from .get_user import get_user_db
-from .database import get_project_repo, get_invited_user_repo
 
 
 async def get_project(project_id: UUID,

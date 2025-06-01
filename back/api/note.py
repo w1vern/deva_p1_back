@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.depends import (get_file, get_file_editor, get_file_viewer, get_note,
-                          get_note_editor, get_user, get_note_repo)
+                          get_note_editor, get_note_repo, get_user)
 from back.exceptions import *
 from back.schemas.note import CreateNoteSchema, NoteSchema, UpdateNoteSchema
 from back.schemas.user import UserSchema
