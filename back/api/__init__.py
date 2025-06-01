@@ -2,15 +2,15 @@
 
 from fastapi import APIRouter
 
-from .auth import AuthController
-from .file import FileController
-from .note import NoteController
-from .project import ProjectController
-from .task import TaskController
+from .auth import router as auth_router
+from .file import router as file_router
+from .note import router as note_router
+from .project import router as project_router
+from .task import router as task_router
 
 router = APIRouter(prefix="/api")
-router.include_router(AuthController.create_router())
-router.include_router(TaskController.create_router())
-router.include_router(FileController.create_router())
-router.include_router(ProjectController.create_router())
-router.include_router(NoteController.create_router())
+router.include_router(auth_router)
+router.include_router(file_router)
+router.include_router(note_router)
+router.include_router(project_router)
+router.include_router(task_router)

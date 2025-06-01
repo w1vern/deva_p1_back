@@ -4,13 +4,12 @@ from deva_p1_db.models import User
 from deva_p1_db.repositories.user_repository import UserRepository
 from fastapi import Cookie, Depends
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.exceptions import *
 from back.schemas.user import UserSchema
 from back.token import AccessToken
-from database.db import session_manager
 from database.redis import RedisType, get_redis_client
+from .database import get_user_repo
 
 
 async def get_user(access_token: str = Cookie(default=None),
@@ -29,17 +28,10 @@ async def get_user(access_token: str = Cookie(default=None),
     return access.user
 
 
-async def get_user_db(session: AsyncSession = Depends(session_manager.session),
-                      user: UserSchema = Depends(get_user)
+async def get_user_db(user: UserSchema = Depends(get_user),
+                      ur: UserRepository = Depends(get_user_repo)
                       ) -> User:
-    ur = UserRepository(session)
     user_db = await ur.get_by_id(user.id)
     if user_db is None:
         raise SendFeedbackToAdminException()
     return user_db
-
-
-
-
-
-

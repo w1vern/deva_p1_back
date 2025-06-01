@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from back.config import Config
 from back.schemas.task import RedisTaskCacheSchema
 from config import settings
-from database.db import session_manager
+from database.database import session_manager
 from database.redis import RedisType, get_redis_client
 
 RABBIT_URL = f"amqp://{settings.rabbit_user}:{settings.rabbit_password}@{settings.rabbit_ip}:{settings.rabbit_port}/"
