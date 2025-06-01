@@ -1,5 +1,6 @@
 
 
+from datetime import timedelta
 import mimetypes
 import re
 from io import BytesIO
@@ -15,6 +16,7 @@ from fastapi.responses import StreamingResponse
 from minio import Minio, S3Error
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from back.config import Config
 from back.depends import (get_file, get_file_editor, get_file_repo,
                           get_file_viewer, get_project, get_project_editor)
 from back.exceptions import *
@@ -22,7 +24,7 @@ from back.schemas.file import FileEditSchema, FileSchema
 from back.schemas.user import UserSchema
 from config import settings
 from database.database import session_manager
-from database.s3 import get_s3_client
+from database.minio import get_s3_client
 
 router = APIRouter(prefix="/file", tags=["file"])
 
@@ -158,6 +160,19 @@ async def download_file(file: File = Depends(get_file),
         response,
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{file.file_name}"'})
+
+@router.get("minio_url/{file_id}")
+async def get_minio_url(file: File = Depends(get_file),
+                        user: User = Depends(get_file_viewer),
+                        minio_client: Minio = Depends(get_s3_client)
+                        ) -> str:
+
+
+    return minio_client.presigned_get_object(
+        bucket_name=settings.minio_bucket,
+        object_name=str(file.id),
+        expires=timedelta(seconds=Config.minio_url_live_time)
+    ).replace(f"{settings.minio_ip}:{settings.minio_port}", f"{settings.minio_url}")
 
 
 @router.get("/video/{file_id}")

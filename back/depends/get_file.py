@@ -3,12 +3,12 @@
 from uuid import UUID
 
 from deva_p1_db.models import File, User
-from deva_p1_db.repositories import FileRepository
+from deva_p1_db.repositories import FileRepository, InvitedUserRepository
 from fastapi import Depends
 
 from back.exceptions import FileNotFoundException
 
-from .database import get_file_repo
+from .database import get_file_repo, get_invited_user_repo
 from .get_project import get_project_editor, get_project_viewer
 from .get_user import get_user_db
 
@@ -23,9 +23,10 @@ async def get_file(file_id: UUID,
 
 
 async def get_file_viewer(file: File = Depends(get_file),
-                          user: User = Depends(get_user_db)
+                          user: User = Depends(get_user_db),
+                          iur: InvitedUserRepository = Depends(get_invited_user_repo)
                           ) -> User:
-    return await get_project_viewer(file.project, user)
+    return await get_project_viewer(file.project, user, iur)
 
 
 async def get_file_editor(file: File = Depends(get_file),
