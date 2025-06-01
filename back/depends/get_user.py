@@ -1,17 +1,17 @@
 from datetime import UTC, datetime
 
-from deva_p1_db.models import User, InvitedUser
-from deva_p1_db.repositories import UserRepository, InvitedUserRepository, ProjectRepository
+from deva_p1_db.models import InvitedUser, User
+from deva_p1_db.repositories import (InvitedUserRepository, ProjectRepository,
+                                     UserRepository)
 from fastapi import Cookie, Depends
 from redis.asyncio import Redis
 
-
 from back.exceptions import *
-from back.schemas import UserSchema, InvitedUserSchema
+from back.schemas import InvitedUserSchema, UserSchema
 from back.token import AccessToken
 from database.redis import RedisType, get_redis_client
 
-from .database import get_user_repo, get_invited_user_repo, get_project_repo
+from .database import get_invited_user_repo, get_project_repo, get_user_repo
 
 
 async def get_user(access_token: str = Cookie(default=None),

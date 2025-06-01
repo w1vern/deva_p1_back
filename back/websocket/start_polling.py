@@ -9,8 +9,10 @@ from fastapi import WebSocket
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .payload import (project_payload, redis_to_websocket, task_payload,
-                      websocket_to_redis)
+from back.config import Config
+
+from .payload import (project_payload, redis_to_websocket,
+                      task_payload, websocket_to_redis)
 
 
 async def start_polling(websocket: WebSocket,
@@ -27,7 +29,7 @@ async def start_polling(websocket: WebSocket,
     async def consume(gen: AsyncGenerator) -> None:
         async for item in gen:
             if item is None:
-                await asyncio.sleep(1)
+                await asyncio.sleep(Config.websocket_polling_interval)
                 continue
             await queue.put(item)
 

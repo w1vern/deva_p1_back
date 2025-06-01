@@ -25,8 +25,8 @@ from back.schemas.task import ActiveTaskSchema
 from back.websocket.start_polling import start_polling
 from config import settings
 from database.database import session_manager
-from database.redis import get_redis_client
 from database.minio import get_s3_client
+from database.redis import get_redis_client
 
 from .share import router as share_router
 

@@ -1,12 +1,12 @@
 
 
-from deva_p1_db.models import Project, User, InvitedUser
+from deva_p1_db.models import InvitedUser, Project, User
 from deva_p1_db.repositories import InvitedUserRepository
 from fastapi import APIRouter, Depends
 
 from back.depends import (get_invited_user, get_invited_user_repo,
                           get_not_invited_user, get_project,
-                          get_project_editor, get_project_by_invited_user,
+                          get_project_by_invited_user, get_project_editor,
                           get_user_db)
 from back.exceptions import *
 from back.schemas import UserSchema

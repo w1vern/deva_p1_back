@@ -2,15 +2,15 @@
 from uuid import UUID
 
 from deva_p1_db.models import Note, User
-from deva_p1_db.repositories import NoteRepository, InvitedUserRepository
+from deva_p1_db.repositories import InvitedUserRepository, NoteRepository
 from fastapi import Depends
 
 from back.exceptions import NoteNotFoundException
 
 from .database import get_note_repo
 from .get_file import get_file
-from .get_project import (get_project_editor, get_project_viewer,
-                          get_invited_user_repo)
+from .get_project import (get_invited_user_repo, get_project_editor,
+                          get_project_viewer)
 from .get_user import get_user_db
 
 
