@@ -129,5 +129,5 @@ async def update_creds(user_update: UserUpdateSchema,
 
 
 @router.get("/user_info")
-async def get_user_info(self, user: UserSchema = Depends(get_user)) -> UserSchema:
+async def get_user_info(user: UserSchema = Depends(get_user)) -> UserSchema:
     return user
