@@ -3,27 +3,31 @@
 import shutil
 from copy import deepcopy
 from io import BytesIO
+from typing import AsyncGenerator
 from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from deva_p1_db.models import User
 from deva_p1_db.repositories import (FileRepository, ProjectRepository,
                                      TaskRepository)
-from fastapi import Depends
+from fastapi import Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
-from fastapi_controllers import Controller, delete, get, patch, post
+from fastapi_controllers import Controller, delete, get, patch, post, websocket
 from minio import Minio
 
+from back.exceptions import *
 from back.get_auth import get_user, get_user_db
 from back.schemas.file import FileSchema
 from back.schemas.project import (CreateProjectSchema, EditProjectSchema,
                                   ProjectSchema)
 from back.schemas.task import ActiveTaskSchema
 from back.schemas.user import UserSchema
+from back.websocket.start_polling import start_polling
 from config import settings
 from database.db import Session
+from database.redis import get_redis_client
 from database.s3 import get_s3_client
-from back.exceptions import *
+from redis.asyncio import Redis
 
 
 class ProjectController(Controller):
@@ -161,3 +165,26 @@ class ProjectController(Controller):
             headers={
                 "Content-Disposition": f'attachment; filename="{user.login}.zip"'}
         )
+
+    @websocket("/ws/{project_id}")
+    async def websocket(self,
+                        websocket: WebSocket,
+                        project_id: UUID,
+                        user: UserSchema = Depends(get_user),
+                        redis: Redis = Depends(get_redis_client),
+                        ):
+        project = await self.pr.get_by_id(project_id)
+        if project is None:
+            raise ProjectNotFoundException(project_id)
+        await websocket.accept()
+        try:
+            async for item in start_polling(websocket,
+                                            redis,
+                                            project,
+                                            user.id,
+                                            self.session):
+                await websocket.send_text(item)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            await websocket.close()

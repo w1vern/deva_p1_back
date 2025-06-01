@@ -5,11 +5,11 @@ from deva_p1_db.repositories.user_repository import UserRepository
 from fastapi import Cookie, Depends
 from redis.asyncio import Redis
 
+from back.exceptions import *
 from back.schemas.user import UserSchema
 from back.token import AccessToken
 from database.db import Session
 from database.redis import RedisType, get_redis_client
-from back.exceptions import *
 
 
 async def get_user(access_token: str = Cookie(default=None),

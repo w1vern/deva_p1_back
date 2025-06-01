@@ -8,13 +8,13 @@ from fastapi_controllers import Controller, get, patch, post
 from redis.asyncio import Redis
 
 from back.config import Config
+from back.exceptions import *
 from back.get_auth import get_user, get_user_db
 from back.schemas.user import (CredsSchema, RegisterSchema, UserSchema,
                                UserUpdateSchema)
 from back.token import AccessToken, RefreshToken
 from database.db import Session
 from database.redis import RedisType, get_redis_client
-from back.exceptions import *
 
 
 class AuthController(Controller):

@@ -1,12 +1,142 @@
 
 
+import asyncio
+from typing import Any, AsyncGenerator
 from uuid import UUID
+
+from deva_p1_db.models import Project, Task
+from deva_p1_db.repositories import TaskRepository, ProjectRepository
+from fastapi import WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
-from deva_p1_db.models import Project
-from deva_p1_db.repositories import TaskRepository
+
+from back.config import Config
+from back.schemas.project import ProjectSchema
+from back.schemas.task import TaskSchema
+from database.redis import RedisType
+from back.exceptions import *
 
 
-async def task_info(redis: Redis, project: Project, session: AsyncSession) -> str | None:
+async def redis_get_and_delete(redis: Redis, key: str) -> Any | None:
+    value = await redis.get(key)
+    if value:
+        await redis.delete(key)
+        return value
+    return None
+
+
+async def task_payload(redis: Redis,
+                       project: Project,
+                       user_id: UUID,
+                       session: AsyncSession,
+                       ) -> AsyncGenerator[str | None, None]:
+
+    async def get_active_tasks(tr: TaskRepository, project: Project) -> list[Task]:
+        tasks = await tr.get_by_project(project)
+        return [task for task in tasks if task.done is False]
+
     tr = TaskRepository(session)
-    tasks = await tr.get_by_project(project)
+
+    tasks = await get_active_tasks(tr, project)
+
+    while True:
+        flag = True
+        task_update = await redis.get(f"{RedisType.project_task_update}:{project.id}")
+        if task_update:
+            main_task = None
+            tasks = await get_active_tasks(tr, project)
+            for task in tasks:
+                if not task.origin_task_id:
+                    main_task = task
+            assert isinstance(main_task, Task)
+            if main_task.user_id != user_id:
+                flag = False
+                yield TaskSchema(id=main_task.id,
+                                 done=False,
+                                 status=0,
+                                 task_type=main_task.task_type
+                                 ).model_dump_json()
+        for task in tasks:
+            if not task.origin_task_id and \
+                    task.id not in [_.id for _ in tasks if _.id != task.id]:
+                flag = False
+                yield TaskSchema(id=task.id,
+                                 done=True,
+                                 status=1,
+                                 task_type=task.task_type
+                                 ).model_dump_json()
+
+            if cached := await redis_get_and_delete(redis, f"{RedisType.task_error}:{task.id}"):
+                tasks.pop(tasks.index(task))
+                flag = False
+                yield f"{cached}"
+
+            if cached := await redis_get_and_delete(redis, f"{RedisType.task_status}:{task.id}"):
+                flag = False
+                yield TaskSchema(id=task.id,
+                                 done=False,
+                                 status=cached,
+                                 task_type=task.task_type
+                                 ).model_dump_json()
+
+            if cached := await redis_get_and_delete(redis, f"{RedisType.task}:{task.id}"):
+                tasks.pop(tasks.index(task))
+                flag = False
+                yield TaskSchema(id=task.id,
+                                 done=True,
+                                 status=1,
+                                 task_type=task.task_type
+                                 ).model_dump_json()
+        if flag:
+            yield None
+
+
+async def project_payload(redis: Redis,
+                          project: Project,
+                          user_id: UUID,
+                          session: AsyncSession,
+                          ) -> AsyncGenerator[str | None, None]:
+    key = f"{RedisType.project_update}:{project.id}"
+    pr = ProjectRepository(session)
+    while True:
+        flag = True
+        data = await redis_get_and_delete(redis, key)
+        if data:
+            redis_user_id = UUID(data["user_id"])
+            if redis_user_id != user_id:
+                updated_project = await pr.get_by_id(project.id)
+                if updated_project is None:
+                    raise SendFeedbackToAdminException()
+                flag = False
+                yield ProjectSchema.from_db(updated_project).model_dump_json()
+        if flag:
+            yield None
+
+
+async def websocket_to_redis(websocket: WebSocket,
+                             redis: Redis,
+                             project: Project,
+                             user_id: UUID,
+                             ) -> None:
+    while True:
+        try:
+            data = await asyncio.wait_for(websocket.receive_bytes(), timeout=0.1)
+            await redis.set(f"{RedisType.project_doc_bytes}:{project.id}:{user_id}", data)
+        except asyncio.TimeoutError:
+            await asyncio.sleep(Config.websocket_polling_interval)
+        except WebSocketDisconnect:
+            break
+
+
+async def redis_to_websocket(redis: Redis,
+                             project: Project,
+                             user_id: UUID,
+                             session: AsyncSession
+                             ) -> AsyncGenerator[str | None, None]:
+
+    while True:
+        data = await redis_get_and_delete(redis, f"{RedisType.project_doc_bytes}:{project.id}:{user_id}")
+        if data:
+            yield data
+        else:
+            yield None

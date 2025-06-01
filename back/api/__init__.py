@@ -4,9 +4,9 @@ from fastapi import APIRouter
 
 from .auth import AuthController
 from .file import FileController
+from .note import NoteController
 from .project import ProjectController
 from .task import TaskController
-from .note import NoteController
 
 router = APIRouter(prefix="/api")
 router.include_router(AuthController.create_router())

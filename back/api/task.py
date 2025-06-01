@@ -15,13 +15,12 @@ from redis.asyncio import Redis
 
 from back.broker import get_broker, send_message_and_cache
 from back.config import Config
+from back.exceptions import *
 from back.get_auth import get_user, get_user_db
-from back.schemas.task import (ActiveTaskSchema,
-                               TaskCreateSchema, TaskSchema)
+from back.schemas.task import ActiveTaskSchema, TaskCreateSchema, TaskSchema
 from back.schemas.user import UserSchema
 from database.db import Session
 from database.redis import RedisType, get_redis_client
-from back.exceptions import *
 
 
 class TaskController(Controller):
@@ -64,7 +63,7 @@ class TaskController(Controller):
                     raise ProjectAlreadyHasActiveTasksException()
         match new_task.task_type:
             case TaskType.transcribe.value:
-                if project.transcription_id is not None:
+                if project.transcription_id:
                     raise ProjectAlreadyHasTranscriptionException()
             case TaskType.frames_extract.value:
                 if project.frames_extract_done:
@@ -133,55 +132,7 @@ class TaskController(Controller):
             raise SendFeedbackToAdminException()
         await self.session.commit()
         await send_message_and_cache(broker, redis, task, project.id)
+        await redis.set(f"{RedisType.project_task_update}:{project.id}", 1, ex=Config.redis_task_status_lifetime)
         return ActiveTaskSchema.from_db(task)
 
-    @get("/sse/{task_id}")
-    @sse_handler()
-    async def sse_task_response(self,
-                                task_id: UUID,
-                                request: Request,
-                                user: UserSchema = Depends(get_user),
-                                redis: Redis = Depends(get_redis_client)
-                                ):
-        done_cache_key_template = f"{RedisType.task}:"
-        status_cache_key = f"{RedisType.task_status}:"
-        main_task = await self.tr.get_by_id(task_id)
-        prev_state = {}
-        prev_state_done = {}
-        if main_task is None:
-            raise TaskNotFoundException(task_id)
-        tasks = await self.tr.get_by_origin_task(main_task)
-        if len(tasks) == 0:
-            tasks.append(main_task)
-        counter = 0
-        iterations = 0
-        while True:
-            iterations += 1
-            if await request.is_disconnected():
-                break
-            for task in tasks:
-                cached = await redis.get(f"{RedisType.task_error}:{task.id}")
-                if cached:
-                    raise AIException(cached)
-                cached = await redis.get(f"{status_cache_key}{task.id}")
-                if cached:
-                    if cached != prev_state.get(task.id):
-                        prev_state[task.id] = cached
-                        yield TaskSchema(id=task.id,
-                                         done=False,
-                                         status=cached,
-                                         task_type=task.task_type)
-                cached = await redis.get(f"{done_cache_key_template}{task.id}")
-                if cached:
-                    if cached != prev_state_done.get(task.id):
-                        prev_state_done[task.id] = cached
-                        yield TaskSchema(id=task.id, done=True, status=1, task_type=task.task_type)
-                        counter += 1
-            if counter >= len(tasks):
-                break
-            if iterations > Config.sse_max_iterations:
-                raise TooLongPollingException()
-            await asyncio.sleep(Config.sse_task_polling_interval)
-        if len(tasks) > 1:
-            yield TaskSchema(id=task_id, done=True, status=1, task_type=main_task.task_type)
-        print("goodbye")
+

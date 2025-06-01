@@ -14,7 +14,7 @@ class Config:
 	ip_buffer = 10
 	ip_buffer_lifetime = 60*60*24
 	algorithm = "HS256"
-	sse_task_polling_interval = 1
-	sse_max_iterations = 60 * 60 / sse_task_polling_interval
+	websocket_polling_interval = 1
+	websocket_max_iterations = 60 * 60 / websocket_polling_interval
 	redis_task_status_lifetime = 60 * 10
 	minio_url_live_time = 10*60

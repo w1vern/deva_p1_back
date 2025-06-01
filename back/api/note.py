@@ -6,11 +6,11 @@ from deva_p1_db.repositories import FileRepository, NoteRepository
 from fastapi import Depends
 from fastapi_controllers import Controller, delete, get, patch, post
 
+from back.exceptions import *
 from back.get_auth import get_user
 from back.schemas.note import CreateNoteSchema, NoteSchema, UpdateNoteSchema
 from back.schemas.user import UserSchema
 from database.db import Session
-from back.exceptions import *
 
 
 class NoteController(Controller):

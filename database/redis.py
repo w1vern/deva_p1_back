@@ -10,6 +10,9 @@ class RedisType(str, Enum):
     incorrect_credentials = "incorrect_credentials",
     invalidated_access_token = "invalidated_access_token"
     incorrect_credentials_ip = "incorrect_credentials_ip"
+    project_task_update = "project_task_update"
+    project_update = "project_update"
+    project_doc_bytes = "project_doc_bytes"
     task = "task"
     task_status = "task_status"
     task_cache = "task_cache"

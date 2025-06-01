@@ -1,6 +1,7 @@
 
 
 from typing import Callable
+
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
