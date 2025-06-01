@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 
 class CreateNoteSchema(BaseModel):
-    file_id: UUID
     text: str
     start_time_code: float
     end_time_code: float | None = None

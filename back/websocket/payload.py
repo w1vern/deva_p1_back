@@ -5,16 +5,16 @@ from typing import Any, AsyncGenerator
 from uuid import UUID
 
 from deva_p1_db.models import Project, Task
-from deva_p1_db.repositories import TaskRepository, ProjectRepository
+from deva_p1_db.repositories import ProjectRepository, TaskRepository
 from fastapi import WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
+from back.exceptions import *
 from back.schemas.project import ProjectSchema
 from back.schemas.task import TaskSchema
 from database.redis import RedisType
-from back.exceptions import *
 
 
 async def redis_get_and_delete(redis: Redis, key: str) -> Any | None:

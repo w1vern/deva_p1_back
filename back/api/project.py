@@ -3,42 +3,42 @@
 import shutil
 from copy import deepcopy
 from io import BytesIO
-from typing import AsyncGenerator
-from uuid import UUID
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from deva_p1_db.models import User
-from deva_p1_db.repositories import (FileRepository, ProjectRepository,
-                                     TaskRepository)
+from deva_p1_db.models import Project, User
+from deva_p1_db.repositories import (FileRepository, InvitedUserRepository,
+                                     ProjectRepository, TaskRepository)
 from fastapi import Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from fastapi_controllers import Controller, delete, get, patch, post, websocket
 from minio import Minio
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from back.depends import (get_project, get_project_editor,
+                          get_project_viewer, get_user_db)
 from back.exceptions import *
-from back.get_auth import get_user, get_user_db
 from back.schemas.file import FileSchema
 from back.schemas.project import (CreateProjectSchema, EditProjectSchema,
                                   ProjectSchema)
 from back.schemas.task import ActiveTaskSchema
-from back.schemas.user import UserSchema
 from back.websocket.start_polling import start_polling
 from config import settings
-from database.db import Session
+from database.db import session_manager
 from database.redis import get_redis_client
 from database.s3 import get_s3_client
-from redis.asyncio import Redis
 
 
 class ProjectController(Controller):
     prefix = "/project"
     tags = ["project"]
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession = Depends(session_manager.session)) -> None:
         self.session = session
         self.pr = ProjectRepository(self.session)
         self.fr = FileRepository(self.session)
         self.tr = TaskRepository(self.session)
+        self.iur = InvitedUserRepository(self.session)
 
     @post("")
     async def create(self,
@@ -66,36 +66,25 @@ class ProjectController(Controller):
 
     @get("/{project_id}")
     async def get_by_id(self,
-                        project_id: UUID,
-                        user: UserSchema = Depends(get_user)
+                        project: Project = Depends(get_project),
+                        user: User = Depends(get_project_viewer)
                         ) -> ProjectSchema:
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
         return ProjectSchema.from_db(project)
 
     @delete("/{project_id}")
     async def delete(self,
-                     project_id: UUID,
-                     user: UserSchema = Depends(get_user)
+                     project: Project = Depends(get_project),
+                     user: User = Depends(get_project_editor)
                      ):
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
         await self.pr.delete(project)
         return {"message": "OK"}
 
     @patch("/{project_id}")
     async def update(self,
-                     project_id: UUID,
                      update_data: EditProjectSchema,
-                     user: User = Depends(get_user_db)
+                     project: Project = Depends(get_project),
+                     user: User = Depends(get_project_editor)
                      ):
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
-        if project.holder_id != user.id:
-            raise PermissionDeniedException()
         await self.pr.update(project,
                              update_data.name,
                              update_data.description)
@@ -103,41 +92,25 @@ class ProjectController(Controller):
 
     @get("/get_all_files/{project_id}")
     async def get_files_from_project(self,
-                                     project_id: UUID,
-                                     user: UserSchema = Depends(get_user)
+                                     project: Project = Depends(get_project),
+                                     user: User = Depends(get_project_viewer)
                                      ) -> list[FileSchema]:
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
-        if project.holder_id != user.id:
-            raise PermissionDeniedException()
         files = await self.fr.get_by_project(project)
         return [FileSchema.from_db(f) for f in files]
 
     @get("/get_active_tasks/{project_id}")
     async def get_active_tasks(self,
-                               project_id: UUID,
-                               user: UserSchema = Depends(get_user)
+                               project: Project = Depends(get_project),
+                               user: User = Depends(get_project_viewer)
                                ) -> list[ActiveTaskSchema]:
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
-        if project.holder_id != user.id:
-            raise PermissionDeniedException()
         return [ActiveTaskSchema.from_db(task) for task in (await self.tr.get_by_project(project)) if task.done is False]
 
     @get("/download/{project_id}")
     async def download_project(self,
-                               project_id: UUID,
-                               user: UserSchema = Depends(get_user),
+                               project: Project = Depends(get_project),
+                               user: User = Depends(get_project_viewer),
                                minio_client: Minio = Depends(get_s3_client)
                                ):
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
-        if project.holder_id != user.id:
-            raise PermissionDeniedException()
-
         images = deepcopy(await self.fr.get_active_images(project))
         for image in images:
             image.file_name = f"images/{image.file_name}"
@@ -169,13 +142,10 @@ class ProjectController(Controller):
     @websocket("/ws/{project_id}")
     async def websocket(self,
                         websocket: WebSocket,
-                        project_id: UUID,
-                        user: UserSchema = Depends(get_user),
+                        project: Project = Depends(get_project),
+                        user: User = Depends(get_project_viewer),
                         redis: Redis = Depends(get_redis_client),
                         ):
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
         await websocket.accept()
         try:
             async for item in start_polling(websocket,

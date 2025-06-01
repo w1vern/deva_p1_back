@@ -4,13 +4,13 @@ import asyncio
 from typing import AsyncGenerator
 from uuid import UUID
 
-from fastapi import WebSocket
-from .payload import (project_payload, redis_to_websocket,
-                      task_payload, websocket_to_redis)
-
-from redis.asyncio import Redis
 from deva_p1_db.models import Project
+from fastapi import WebSocket
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from .payload import (project_payload, redis_to_websocket, task_payload,
+                      websocket_to_redis)
 
 
 async def start_polling(websocket: WebSocket,

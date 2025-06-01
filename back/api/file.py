@@ -4,22 +4,25 @@ import mimetypes
 import re
 from io import BytesIO
 from typing import Annotated
-from uuid import UUID
 
 from deva_p1_db.enums.file_type import FileCategory, resolve_file_type
-from deva_p1_db.models import User
+from deva_p1_db.models import File, Project, User
 from deva_p1_db.repositories import FileRepository, ProjectRepository
-from fastapi import Depends, File, Request, UploadFile
+from fastapi import Depends
+from fastapi import File as fastapi_file
+from fastapi import Request, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi_controllers import Controller, delete, get, patch, post
 from minio import Minio, S3Error
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from back.depends import (get_file, get_file_editor, get_file_viewer,
+                          get_project, get_user)
 from back.exceptions import *
-from back.get_auth import get_user, get_user_db
 from back.schemas.file import FileEditSchema, FileSchema
 from back.schemas.user import UserSchema
 from config import settings
-from database.db import Session
+from database.db import session_manager
 from database.s3 import get_s3_client
 
 
@@ -27,22 +30,18 @@ class FileController(Controller):
     prefix = "/file"
     tags = ["file"]
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession = Depends(session_manager.session)) -> None:
         self.session = session
         self.fr = FileRepository(self.session)
         self.pr = ProjectRepository(self.session)
 
     @post("")
     async def upload_file(self,
-                          project_id: UUID,
-                          file: Annotated[UploadFile, File(...)],
+                          file: Annotated[UploadFile, fastapi_file(...)],
+                          project: Project = Depends(get_project),
                           user: UserSchema = Depends(get_user),
                           minio_client: Minio = Depends(get_s3_client)
                           ) -> FileSchema:
-
-        project = await self.pr.get_by_id(project_id)
-        if project is None:
-            raise ProjectNotFoundException(project_id)
         if file.filename is None:
             file.filename = ""
 
@@ -107,66 +106,51 @@ class FileController(Controller):
 
     @patch("/{file_id}")
     async def update_file(self,
-                          file_id: UUID,
                           edited_fields: FileEditSchema,
-                          user: UserSchema = Depends(get_user),
+                          file: File = Depends(get_file),
+                          user: User = Depends(get_file_editor),
                           ) -> FileSchema:
-        file = await self.fr.get_by_id(file_id)
-        if file is None:
-            raise FileNotFoundException(file_id)
-        if file.user_id != user.id:
-            raise PermissionDeniedException()
         await self.fr.update_metadata(
             file=file,
             is_hide=edited_fields.metadata_is_hide,
             timecode=edited_fields.metadata_timecode,
             text=edited_fields.metadata_text,
             file_name=edited_fields.file_name)
-        file = await self.fr.get_by_id(file_id)
-        if file is None:
+        updated_file = await self.fr.get_by_id(file.id)
+        if updated_file is None:
             raise SendFeedbackToAdminException()
-        return FileSchema.from_db(file)
+        return FileSchema.from_db(updated_file)
 
     @delete("/{file_id}")
     async def hide_file(self,
-                        file_id: UUID,
-                        user: UserSchema = Depends(get_user)
+                        file: File = Depends(get_file),
+                        user: User = Depends(get_file_editor)
                         ) -> None:
-        file = await self.fr.get_by_id(file_id)
-        if file is None:
-            raise FileNotFoundException(file_id)
         project = file.project
-        if file.user_id != user.id:
-            raise PermissionDeniedException()
         category = resolve_file_type(file.file_type).category
         go_down = False
         match category:
             case FileCategory.audio.value:
                 go_down = True
             case value if value is FileCategory.video.value or go_down:
-                if project.origin_file_id != file_id:
+                if project.origin_file_id != file.id:
                     await self.pr.delete_origin_file(project)
                     await self.pr.delete_transcription_file(project)
                     await self.pr.delete_summary_file(project)
             case FileCategory.transcribe.value:
-                if project.transcription_id != file_id:
+                if project.transcription_id != file.id:
                     await self.pr.delete_transcription_file(project)
                     await self.pr.delete_summary_file(project)
             case FileCategory.summary.value:
-                if project.summary_id != file_id:
+                if project.summary_id != file.id:
                     await self.pr.delete_summary_file(project)
 
     @get("/download/{file_id}")
     async def download_file(self,
-                            file_id: UUID,
-                            user: User = Depends(get_user_db),
+                            file: File = Depends(get_file),
+                            user: User = Depends(get_file_viewer),
                             minio_client: Minio = Depends(get_s3_client)
                             ):
-        file = await self.fr.get_by_id(file_id)
-        if file is None:
-            raise FileNotFoundException(file_id)
-        if file.user_id != user.id:
-            raise PermissionDeniedException()
         try:
             response = minio_client.get_object(
                 bucket_name=settings.minio_bucket,
@@ -181,9 +165,9 @@ class FileController(Controller):
 
     @get("/video/{file_id}")
     async def stream_video(self,
-                           file_id: UUID,
                            request: Request,
-                           user: UserSchema = Depends(get_user),
+                           file: File = Depends(get_file),
+                           user: User = Depends(get_file_viewer),
                            minio_client: Minio = Depends(get_s3_client)
                            ):
         range_header = request.headers.get("range")
@@ -200,10 +184,10 @@ class FileController(Controller):
         try:
 
             stat = minio_client.stat_object(
-                settings.minio_bucket, str(file_id))
+                settings.minio_bucket, str(file.id))
             file_size = stat.size
             if file_size is None:
-                raise FileNotFoundException(file_id)
+                raise FileNotFoundException(file.id)
 
             if end is None or end >= file_size:
                 end = file_size - 1
@@ -212,7 +196,7 @@ class FileController(Controller):
 
             response = minio_client.get_object(
                 settings.minio_bucket,
-                str(file_id),
+                str(file.id),
                 offset=start,
                 length=content_length
             )

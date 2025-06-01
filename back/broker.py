@@ -11,11 +11,12 @@ from deva_p1_db.schemas.task import (TaskErrorToBack, TaskReadyToBack,
 from fastapi import Depends
 from faststream.rabbit import RabbitBroker, RabbitQueue, fastapi
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
 from back.schemas.task import RedisTaskCacheSchema
 from config import settings
-from database.db import Session
+from database.db import session_manager
 from database.redis import RedisType, get_redis_client
 
 RABBIT_URL = f"amqp://{settings.rabbit_user}:{settings.rabbit_password}@{settings.rabbit_ip}:{settings.rabbit_port}/"
@@ -39,7 +40,8 @@ async def send_message(broker: RabbitBroker, queue: RabbitQueue | str, data: Tas
 
 @router.subscriber(RabbitQueuesToBack.done_task)  # TODO: fix origin task
 async def handle_done_task(msg: TaskReadyToBack,
-                           session: Session,
+                           session: AsyncSession = Depends(
+                               session_manager.session),
                            broker: RabbitBroker = Depends(get_broker),
                            redis: Redis = Depends(get_redis_client)
                            ):
@@ -72,7 +74,8 @@ async def handle_progress_task(msg: TaskStatusToBack,
 
 @router.subscriber(RabbitQueuesToBack.error_task)
 async def handle_error_task(msg: TaskErrorToBack,
-                            session: Session,
+                            session: AsyncSession = Depends(
+                                session_manager.session),
                             redis: Redis = Depends(get_redis_client)
                             ):
     tr = TaskRepository(session)

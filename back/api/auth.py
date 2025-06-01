@@ -6,14 +6,15 @@ from deva_p1_db.repositories.user_repository import UserRepository
 from fastapi import Cookie, Depends, Request, Response
 from fastapi_controllers import Controller, get, patch, post
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
+from back.depends import get_user, get_user_db
 from back.exceptions import *
-from back.get_auth import get_user, get_user_db
 from back.schemas.user import (CredsSchema, RegisterSchema, UserSchema,
                                UserUpdateSchema)
 from back.token import AccessToken, RefreshToken
-from database.db import Session
+from database.db import session_manager
 from database.redis import RedisType, get_redis_client
 
 
@@ -21,7 +22,7 @@ class AuthController(Controller):
     prefix = "/auth"
     tags = ["auth"]
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession = Depends(session_manager.session)) -> None:
         self.session = session
         self.ur = UserRepository(self.session)
 

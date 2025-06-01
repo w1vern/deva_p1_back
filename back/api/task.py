@@ -1,25 +1,22 @@
 
-import asyncio
-from uuid import UUID
 
 from deva_p1_db.enums.file_type import FileCategory, resolve_file_type
 from deva_p1_db.enums.task_type import TaskType
-from deva_p1_db.models import User
+from deva_p1_db.models import Project, User
 from deva_p1_db.repositories import (FileRepository, ProjectRepository,
                                      TaskRepository)
-from fastapi import Depends, Request
-from fastapi_controllers import Controller, get, post
-from fastapi_sse import sse_handler
+from fastapi import Depends
+from fastapi_controllers import Controller, post
 from faststream.rabbit import RabbitBroker
 from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.broker import get_broker, send_message_and_cache
 from back.config import Config
+from back.depends import get_project, get_project_editor
 from back.exceptions import *
-from back.get_auth import get_user, get_user_db
-from back.schemas.task import ActiveTaskSchema, TaskCreateSchema, TaskSchema
-from back.schemas.user import UserSchema
-from database.db import Session
+from back.schemas.task import ActiveTaskSchema, TaskCreateSchema
+from database.db import Session, session_manager
 from database.redis import RedisType, get_redis_client
 
 
@@ -27,7 +24,7 @@ class TaskController(Controller):
     prefix = "/task"
     tags = ["task"]
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession = Depends(session_manager.session)) -> None:
         self.session = session
         self.tr = TaskRepository(self.session)
         self.fr = FileRepository(self.session)
@@ -36,15 +33,11 @@ class TaskController(Controller):
     @post("")
     async def create_task(self,
                           new_task: TaskCreateSchema,
-                          user: User = Depends(get_user_db),
+                          project: Project = Depends(get_project),
+                          user: User = Depends(get_project_editor),
                           broker: RabbitBroker = Depends(get_broker),
                           redis: Redis = Depends(get_redis_client)
                           ) -> ActiveTaskSchema:
-        project = await self.pr.get_by_id(new_task.project_id)
-        if project is None:
-            raise ProjectNotFoundException(new_task.project_id)
-        if project.holder_id != user.id:
-            raise PermissionDeniedException()
         if project.origin_file is None:
             raise ProjectHasNoOriginFileException()
         pattern = f"{RedisType.task_cache}:{project.id}:"
@@ -134,5 +127,3 @@ class TaskController(Controller):
         await send_message_and_cache(broker, redis, task, project.id)
         await redis.set(f"{RedisType.project_task_update}:{project.id}", 1, ex=Config.redis_task_status_lifetime)
         return ActiveTaskSchema.from_db(task)
-
-

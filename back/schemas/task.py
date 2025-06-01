@@ -13,7 +13,6 @@ class TaskSchema(BaseModel):
 
 
 class TaskCreateSchema(BaseModel):
-    project_id: UUID
     task_type: str
     prompt: str = ""
 
