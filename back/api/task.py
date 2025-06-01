@@ -3,8 +3,7 @@
 from deva_p1_db.enums.file_type import FileCategory, resolve_file_type
 from deva_p1_db.enums.task_type import TaskType
 from deva_p1_db.models import Project, User
-from deva_p1_db.repositories import (FileRepository, ProjectRepository,
-                                     TaskRepository)
+from deva_p1_db.repositories import TaskRepository
 from fastapi import APIRouter, Depends
 from faststream.rabbit import RabbitBroker
 from redis.asyncio import Redis
