@@ -18,7 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
 from back.depends import (get_file, get_file_editor, get_file_repo,
-                          get_file_viewer, get_project, get_project_editor)
+                          get_file_viewer, get_project, get_project_editor,
+                          get_project_repo)
 from back.exceptions import *
 from back.schemas.file import FileEditSchema, FileSchema
 from back.schemas.user import UserSchema
@@ -35,7 +36,7 @@ async def upload_file(file: Annotated[UploadFile, fastapi_file(...)],
                       user: UserSchema = Depends(get_project_editor),
                       minio_client: Minio = Depends(get_s3_client),
                       fr: FileRepository = Depends(get_file_repo),
-                      pr: ProjectRepository = Depends(get_file_repo),
+                      pr: ProjectRepository = Depends(get_project_repo),
                       session: AsyncSession = Depends(session_manager.session)
                       ) -> FileSchema:
     if file.filename is None:
