@@ -8,7 +8,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from deva_p1_db.models import Project, User
 from deva_p1_db.repositories import (FileRepository, ProjectRepository,
                                      TaskRepository)
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from minio import Minio
 from redis.asyncio import Redis
@@ -149,6 +149,7 @@ async def websocket_aaa(websocket: WebSocket,
     await websocket.accept()
     try:
         await websocket.send_json({"message": "Connected"})
+        raise HTTPException(status_code=499, detail="new exception")
         async for item in start_polling(websocket,
                                         redis,
                                         project,
