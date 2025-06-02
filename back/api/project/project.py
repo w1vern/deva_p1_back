@@ -158,7 +158,7 @@ async def websocket_aaa(websocket: WebSocket,
                                         project,
                                         user.id,
                                         session):
-            await websocket.send_text(item)
+            await websocket.send_json(item)
     except WebSocketDisconnect:
         pass
     finally:

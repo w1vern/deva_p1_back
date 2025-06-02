@@ -10,9 +10,10 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
+from back.schemas import WebsocketMessage
 
-from .payload import (project_payload, redis_to_websocket,
-                      task_payload, websocket_to_redis)
+from .payload import (project_payload, redis_to_websocket, task_payload,
+                      websocket_to_redis)
 
 
 async def start_polling(websocket: WebSocket,
@@ -20,7 +21,7 @@ async def start_polling(websocket: WebSocket,
                         project: Project,
                         user_id: UUID,
                         session: AsyncSession
-                        ) -> AsyncGenerator[str, None]:
+                        ) -> AsyncGenerator[WebsocketMessage, None]:
 
     generators = [gen(redis, project, user_id, session)
                   for gen in [project_payload, task_payload, redis_to_websocket]]
