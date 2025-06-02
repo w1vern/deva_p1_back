@@ -124,7 +124,7 @@ async def websocket_to_redis(websocket: WebSocket,
     while True:
         try:
             data = await asyncio.wait_for(websocket.receive_bytes(), timeout=0.1)
-            await redis.set(f"{RedisType.project_doc_bytes}:{project.id}:{user_id}", data)
+            await redis.set(f"{RedisType.project_doc_bytes}:{project.id}:{user_id}", str(data), ex=Config.websocket_redis_message_lifetime)
         except asyncio.TimeoutError:
             await asyncio.sleep(Config.websocket_polling_interval)
         except WebSocketDisconnect:

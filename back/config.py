@@ -14,6 +14,7 @@ class Config:
 	ip_buffer = 10
 	ip_buffer_lifetime = 60*60*24
 	algorithm = "HS256"
+	websocket_redis_message_lifetime = 60 * 60
 	websocket_polling_interval = 1
 	websocket_max_iterations = 60 * 60 / websocket_polling_interval
 	redis_task_status_lifetime = 60 * 10
