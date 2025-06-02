@@ -148,6 +148,7 @@ async def websocket(websocket: WebSocket,
                     redis: Redis = Depends(get_redis_client),
                     session: AsyncSession = Depends(session_manager.session)
                     ):
+    print("websocket~~!!!!!!")
     await websocket.accept()
     try:
         await websocket.send_json({"message": "Connected"})

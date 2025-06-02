@@ -25,8 +25,6 @@ async def get_project_repo(session: AsyncSession = Depends(session_manager.sessi
 
 async def get_invited_user_repo(session: AsyncSession = Depends(session_manager.session)
                                 ) -> InvitedUserRepository:
-    print(session)
-    print("aaa")
     return InvitedUserRepository(session)
 
 
