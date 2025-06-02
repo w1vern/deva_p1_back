@@ -150,6 +150,7 @@ async def websocket(websocket: WebSocket,
                     ):
     await websocket.accept()
     try:
+        await websocket.send_json({"message": "Connected"})
         async for item in start_polling(websocket,
                                         redis,
                                         project,
