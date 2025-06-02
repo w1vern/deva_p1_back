@@ -81,9 +81,6 @@ async def task_payload(redis: Redis,
                                 tasks.pop(tasks.index(_))
                 tasks.pop(tasks.index(task))
                 continue
-
-            yield websocket_package(f"{task.task_type}", "test")
-        yield websocket_package("-------------------", "test")
         if flag:
             yield None
 
