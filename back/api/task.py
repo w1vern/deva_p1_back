@@ -104,6 +104,7 @@ async def create_task(new_task: TaskCreateSchema,
                 for task in task_queue:
                     await send_message_and_cache(broker, redis, task, project.id)
                 await tr.add_subtask_count(origin_task, len(task_queue) + 1)
+                await redis.set(f"{RedisType.project_task_update}:{project.id}", str(uuid4()), ex=Config.redis_task_status_lifetime)
                 return ActiveTaskSchema.from_db(origin_task)
         case _:
             raise InvalidTaskTypeException()

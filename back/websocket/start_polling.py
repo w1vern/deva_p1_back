@@ -20,10 +20,9 @@ async def start_polling(websocket: WebSocket,
                         redis: Redis,
                         project: Project,
                         user_id: UUID,
-                        session: AsyncSession
                         ) -> AsyncGenerator[WebsocketMessage, None]:
 
-    generators = [gen(redis, project, user_id, session)
+    generators = [gen(redis, project, user_id)
                   for gen in [project_payload, task_payload, redis_to_websocket]]
     queue = asyncio.Queue()
 

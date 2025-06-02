@@ -6,15 +6,14 @@ from uuid import UUID
 
 from deva_p1_db.models import Project, Task
 from deva_p1_db.repositories import ProjectRepository, TaskRepository
-from deva_p1_db.enums.task_type import TaskType
 from fastapi import WebSocket, WebSocketDisconnect
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from back.config import Config
 from back.exceptions import *
 from back.schemas import ProjectSchema, TaskSchema, WebsocketMessage
 from database.redis import RedisType
+from database.database import session_manager
 
 
 async def redis_get_unique(redis: Redis, key: str, my_dict: dict[str, Any]) -> Any | None:
@@ -32,27 +31,28 @@ def websocket_package(data: Any, package_type: str) -> WebsocketMessage:
 async def task_payload(redis: Redis,
                        project: Project,
                        user_id: UUID,
-                       session: AsyncSession,
                        ) -> AsyncGenerator[WebsocketMessage | None, None]:
 
-    async def get_active_tasks(tr: TaskRepository, project: Project) -> list[Task]:
-        tasks = await tr.get_by_project(project)
+    async def get_active_tasks(project: Project) -> list[Task]:
+        async with session_manager.context_session() as session:
+            tr = TaskRepository(session)
+            tasks = await tr.get_by_project(project)
         return [task for task in tasks if task.done is False]
 
-    tr = TaskRepository(session)
     my_dict = {}
 
-    tasks = await get_active_tasks(tr, project)
+    tasks = await get_active_tasks(project)
 
     while True:
         flag = True
         if task_update := await redis_get_unique(redis, f"{RedisType.project_task_update}:{project.id}", my_dict):
-            tasks = await get_active_tasks(tr, project)
+            tasks = await get_active_tasks(project)
         for task in tasks:
             if cached := await redis_get_unique(redis, f"{RedisType.task_error}:{task.id}", my_dict):
                 tasks.pop(tasks.index(task))
                 flag = False
                 yield websocket_package(cached, RedisType.task_error)
+                continue
 
             if cached := await redis_get_unique(redis, f"{RedisType.task_status}:{task.id}", my_dict):
                 flag = False
@@ -63,7 +63,6 @@ async def task_payload(redis: Redis,
                                                    ).model_dump(), RedisType.task_status)
 
             if cached := await redis_get_unique(redis, f"{RedisType.task_done}:{task.id}", my_dict):
-                tasks.pop(tasks.index(task))
                 flag = False
                 yield websocket_package(TaskSchema(id=task.id,
                                                    done=True,
@@ -71,16 +70,20 @@ async def task_payload(redis: Redis,
                                                    task_type=task.task_type
                                                    ).model_dump(), RedisType.task_done)
                 if task.origin_task_id:
-                    if task.origin_task_id in [_.origin_task_id for _ in tasks]:
+                    if task.origin_task_id not in [_.origin_task_id for _ in tasks if task.id != _.id]:
                         for _ in tasks:
                             if _.id == task.origin_task_id:
-                                tasks.pop(tasks.index(_))
                                 yield websocket_package(TaskSchema(id=_.id,
                                                                    done=True,
                                                                    status=1,
                                                                    task_type=_.task_type
                                                                    ).model_dump(), RedisType.task_done)
+                                tasks.pop(tasks.index(_))
+                tasks.pop(tasks.index(task))
+                continue
 
+            yield websocket_package(f"{task.task_type}", "test")
+        yield websocket_package("-------------------", "test")
         if flag:
             yield None
 
@@ -88,18 +91,18 @@ async def task_payload(redis: Redis,
 async def project_payload(redis: Redis,
                           project: Project,
                           user_id: UUID,
-                          session: AsyncSession,
                           ) -> AsyncGenerator[WebsocketMessage | None, None]:
     my_dict = {}
     key = f"{RedisType.project_update}:{project.id}"
-    pr = ProjectRepository(session)
     while True:
         flag = True
         data = await redis_get_unique(redis, key, my_dict)
         if data:
             redis_user_id = UUID(data["user_id"])
             if redis_user_id != user_id:
-                updated_project = await pr.get_by_id(project.id)
+                async with session_manager.context_session() as session:
+                    pr = ProjectRepository(session)
+                    updated_project = await pr.get_by_id(project.id)
                 if updated_project is None:
                     raise SendFeedbackToAdminException()
                 flag = False
@@ -126,7 +129,6 @@ async def websocket_to_redis(websocket: WebSocket,
 async def redis_to_websocket(redis: Redis,
                              project: Project,
                              user_id: UUID,
-                             session: AsyncSession
                              ) -> AsyncGenerator[WebsocketMessage | None, None]:
     my_dict = {}
     while True:

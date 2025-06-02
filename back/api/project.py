@@ -143,9 +143,7 @@ async def download_project(project: Project = Depends(get_project),
 async def websocket_aaa(websocket: WebSocket,
                         project: Project = Depends(get_project),
                         user: User = Depends(get_project_viewer),
-                        redis: Redis = Depends(get_redis_client),
-                        session: AsyncSession = Depends(
-                            session_manager.session)
+                        redis: Redis = Depends(get_redis_client)
                         ):
     await websocket.accept()
     try:
@@ -153,8 +151,7 @@ async def websocket_aaa(websocket: WebSocket,
         async for item in start_polling(websocket,
                                         redis,
                                         project,
-                                        user.id,
-                                        session):
+                                        user.id):
             await websocket.send_text(item.model_dump_json())
     except WebSocketDisconnect:
         await websocket.send_text(WebsocketMessage(message_type="connection", data="Disconnected").model_dump_json())
