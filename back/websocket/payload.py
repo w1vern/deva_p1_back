@@ -45,7 +45,7 @@ async def task_payload(redis: Redis,
     while True:
         flag = True
         task_update = await redis_get_and_delete(redis, (f"{RedisType.project_task_update}:{project.id}"))
-        if task_update:
+        if task_update or True:
             tasks = await get_active_tasks(tr, project)
             """main_task = None
             for task in tasks:
@@ -63,6 +63,7 @@ async def task_payload(redis: Redis,
             if not task.origin_task_id and \
                     task.id not in [_.id for _ in tasks if _.id != task.id]:
                 flag = False
+                tasks.pop(tasks.index(task))
                 yield websocket_package(TaskSchema(id=task.id,
                                                    done=True,
                                                    status=1,
