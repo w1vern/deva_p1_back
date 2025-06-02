@@ -28,11 +28,8 @@ from database.database import session_manager
 from database.minio import get_s3_client
 from database.redis import get_redis_client
 
-from .share import router as share_router
 
 router = APIRouter(prefix="/project", tags=["project"])
-
-router.include_router(share_router)
 
 
 @router.post("")
@@ -149,7 +146,6 @@ async def websocket_aaa(websocket: WebSocket,
                         session: AsyncSession = Depends(
                             session_manager.session)
                         ):
-    print("websocket~~!!!!!!")
     await websocket.accept()
     try:
         await websocket.send_json({"message": "Connected"})

@@ -12,7 +12,8 @@ from back.exceptions import *
 from back.schemas import UserSchema
 from back.schemas.project import ProjectSchema
 
-router = APIRouter(prefix="/share", tags=["share"])
+
+router = APIRouter(prefix="/project/share", tags=["share"])
 
 
 @router.post("")
