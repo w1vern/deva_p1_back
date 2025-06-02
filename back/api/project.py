@@ -157,8 +157,11 @@ async def websocket_aaa(websocket: WebSocket,
                                         session):
             await websocket.send_json(item.model_dump())
     except WebSocketDisconnect:
-        await websocket.send_json(WebsocketMessage(message_type="disconnect", data={"message": "Disconnected"}).model_dump())
+        await websocket.send_json(WebsocketMessage(message_type="disconnect", data="Disconnected").model_dump())
     except Exception as e:
-        await websocket.send_json(WebsocketMessage(message_type="error", data={"message": e}).model_dump())
+        try:
+            await websocket.send_json(WebsocketMessage(message_type="error", data=e).model_dump())
+        except Exception as e:
+            await websocket.send_text(str(e))
     finally:
         await websocket.close()
