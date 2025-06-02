@@ -154,7 +154,7 @@ async def websocket_aaa(websocket: WebSocket,
                                         project,
                                         user.id,
                                         session):
-            await websocket.send_json(item)
+            await websocket.send_json(item.model_dump_json())
     except WebSocketDisconnect:
         await websocket.send_json({"message": "Disconnected"})
     except Exception as e:
