@@ -1,5 +1,6 @@
 
 
+from uuid import uuid4
 from deva_p1_db.enums.file_type import FileCategory, resolve_file_type
 from deva_p1_db.enums.task_type import TaskType
 from deva_p1_db.models import Project, User
@@ -116,5 +117,5 @@ async def create_task(new_task: TaskCreateSchema,
         raise SendFeedbackToAdminException()
     await session.commit()
     await send_message_and_cache(broker, redis, task, project.id)
-    await redis.set(f"{RedisType.project_task_update}:{project.id}", 1, ex=Config.redis_task_status_lifetime)
+    await redis.set(f"{RedisType.project_task_update}:{project.id}", str(uuid4()), ex=Config.redis_task_status_lifetime)
     return ActiveTaskSchema.from_db(task)

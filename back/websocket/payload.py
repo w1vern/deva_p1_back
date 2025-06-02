@@ -17,18 +17,9 @@ from back.schemas import ProjectSchema, TaskSchema, WebsocketMessage
 from database.redis import RedisType
 
 
-""" async def redis_get_and_delete(redis: Redis, key: str) -> Any | None:
-    value = await redis.get(key)
-    if value:
-        await redis.delete(key)
-        return value
-    return None
- """
-
-
 async def redis_get_unique(redis: Redis, key: str, my_dict: dict[str, Any]) -> Any | None:
     value = await redis.get(key)
-    if value and key not in my_dict:
+    if value and (key not in my_dict or my_dict[key] != value):
         my_dict[key] = value
         return value
     return None
@@ -57,18 +48,6 @@ async def task_payload(redis: Redis,
         flag = True
         if task_update := await redis_get_unique(redis, f"{RedisType.project_task_update}:{project.id}", my_dict):
             tasks = await get_active_tasks(tr, project)
-            """main_task = None
-            for task in tasks:
-                if not task.origin_task_id:
-                    main_task = task
-            assert isinstance(main_task, Task)
-            if main_task.user_id != user_id:
-                flag = False
-                yield websocket_package(TaskSchema(id=main_task.id,
-                                                   done=True,
-                                                   status=1,
-                                                   task_type=main_task.task_type
-                                                   ).model_dump(), "task_done") """
         for task in tasks:
             if cached := await redis_get_unique(redis, f"{RedisType.task_error}:{task.id}", my_dict):
                 tasks.pop(tasks.index(task))
