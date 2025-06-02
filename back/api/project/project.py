@@ -142,22 +142,23 @@ async def download_project(project: Project = Depends(get_project),
 
 
 @router.websocket("/ws/{project_id}")
-async def websocket(websocket: WebSocket,
-                    project: Project = Depends(get_project),
-                    user: User = Depends(get_project_viewer),
-                    redis: Redis = Depends(get_redis_client),
-                    session: AsyncSession = Depends(session_manager.session)
-                    ):
+async def websocket_aaa(websocket: WebSocket,
+                        project: Project = Depends(get_project),
+                        #user: User = Depends(get_project_viewer),
+                        redis: Redis = Depends(get_redis_client),
+                        session: AsyncSession = Depends(
+                            session_manager.session)
+                        ):
     print("websocket~~!!!!!!")
     await websocket.accept()
     try:
         await websocket.send_json({"message": "Connected"})
-        async for item in start_polling(websocket,
-                                        redis,
-                                        project,
-                                        user.id,
-                                        session):
-            await websocket.send_text(item)
+        # async for item in start_polling(websocket,
+        #                                 redis,
+        #                                 project,
+        #                                 user.id,
+        #                                 session):
+        #     await websocket.send_text(item)
     except WebSocketDisconnect:
         pass
     finally:
