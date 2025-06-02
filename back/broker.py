@@ -60,7 +60,7 @@ async def handle_done_task(msg: TaskReadyToBack,
                 await send_message_and_cache(broker, redis, tasks[0], handled_task.project_id)
                 await redis.set(f"{RedisType.task_status}:{tasks[0].id}", 0.0, ex=Config.redis_task_status_lifetime)
     await redis.delete(f"{RedisType.task_cache}:{handled_task.project_id}:{handled_task.task_type}")
-    await redis.set(f"{RedisType.task}:{msg.task_id}", 1, ex=Config.redis_task_status_lifetime)
+    await redis.set(f"{RedisType.task_done}:{msg.task_id}", 1, ex=Config.redis_task_status_lifetime)
 
 
 @router.subscriber(RabbitQueuesToBack.progress_task)

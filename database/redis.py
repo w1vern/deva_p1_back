@@ -13,7 +13,7 @@ class RedisType(str, Enum):
     project_task_update = "project_task_update"
     project_update = "project_update"
     project_doc_bytes = "project_doc_bytes"
-    task = "task"
+    task_done = "task_done"
     task_status = "task_status"
     task_cache = "task_cache"
     task_error = "task_error"
