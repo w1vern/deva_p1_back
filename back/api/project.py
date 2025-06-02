@@ -8,7 +8,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 from deva_p1_db.models import Project, User
 from deva_p1_db.repositories import (FileRepository, ProjectRepository,
                                      TaskRepository)
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from minio import Minio
 from redis.asyncio import Redis
@@ -22,6 +22,7 @@ from back.schemas.file import FileSchema
 from back.schemas.project import (CreateProjectSchema, EditProjectSchema,
                                   ProjectSchema)
 from back.schemas.task import ActiveTaskSchema
+from back.schemas.websocket import WebsocketMessage
 from back.websocket.start_polling import start_polling
 from config import settings
 from database.database import session_manager
@@ -154,10 +155,10 @@ async def websocket_aaa(websocket: WebSocket,
                                         project,
                                         user.id,
                                         session):
-            await websocket.send_json(item.model_dump_json())
+            await websocket.send_json(item.model_dump())
     except WebSocketDisconnect:
-        await websocket.send_json({"message": "Disconnected"})
+        await websocket.send_json(WebsocketMessage(message_type="disconnect", data={"message": "Disconnected"}).model_dump())
     except Exception as e:
-        await websocket.send_json({"error": str(e)})
+        await websocket.send_json(WebsocketMessage(message_type="error", data={"message": e}).model_dump())
     finally:
         await websocket.close()

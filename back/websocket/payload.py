@@ -24,7 +24,7 @@ async def redis_get_and_delete(redis: Redis, key: str) -> Any | None:
     return None
 
 
-def websocket_package(data: str, package_type: str) -> WebsocketMessage:
+def websocket_package(data: dict[str, Any], package_type: str) -> WebsocketMessage:
     return WebsocketMessage(message_type=package_type, data=data)
 
 
@@ -58,7 +58,7 @@ async def task_payload(redis: Redis,
                                                    done=True,
                                                    status=1,
                                                    task_type=main_task.task_type
-                                                   ).model_dump_json(), "task_done")
+                                                   ).model_dump(), "task_done")
         for task in tasks:
             # if not task.origin_task_id and \
             #         task.id not in [_.id for _ in tasks if _.id != task.id]:
@@ -72,7 +72,7 @@ async def task_payload(redis: Redis,
             if cached := await redis_get_and_delete(redis, f"{RedisType.task_error}:{task.id}"):
                 tasks.pop(tasks.index(task))
                 flag = False
-                yield websocket_package(f"{cached}", "task_error")
+                yield websocket_package({"message": cached}, "task_error")
 
             if cached := await redis_get_and_delete(redis, f"{RedisType.task_status}:{task.id}"):
                 flag = False
@@ -80,7 +80,7 @@ async def task_payload(redis: Redis,
                                                    done=False,
                                                    status=cached,
                                                    task_type=task.task_type
-                                                   ).model_dump_json(), "task_status")
+                                                   ).model_dump(), "task_status")
 
             if cached := await redis_get_and_delete(redis, f"{RedisType.task}:{task.id}"):
                 tasks.pop(tasks.index(task))
@@ -89,7 +89,7 @@ async def task_payload(redis: Redis,
                                                    done=True,
                                                    status=1,
                                                    task_type=task.task_type
-                                                   ).model_dump_json(), "task_done")
+                                                   ).model_dump(), "task_done")
         if flag:
             yield None
 
@@ -111,7 +111,7 @@ async def project_payload(redis: Redis,
                 if updated_project is None:
                     raise SendFeedbackToAdminException()
                 flag = False
-                yield websocket_package(ProjectSchema.from_db(updated_project).model_dump_json(), "project_update")
+                yield websocket_package(ProjectSchema.from_db(updated_project).model_dump(), "project_update")
         if flag:
             yield None
 
@@ -140,6 +140,6 @@ async def redis_to_websocket(redis: Redis,
     while True:
         data = await redis_get_and_delete(redis, f"{RedisType.project_doc_bytes}:{project.id}:{user_id}")
         if data:
-            yield websocket_package(data, "project_doc_bytes")
+            yield websocket_package({"data": data}, "project_doc_bytes")
         else:
             yield None
