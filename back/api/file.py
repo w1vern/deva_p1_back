@@ -30,7 +30,7 @@ from database.minio import get_s3_client
 router = APIRouter(prefix="/file", tags=["file"])
 
 
-@router.post("")
+@router.post("/{project_id}")
 async def upload_file(file: Annotated[UploadFile, fastapi_file(...)],
                       project: Project = Depends(get_project),
                       user: UserSchema = Depends(get_project_editor),
