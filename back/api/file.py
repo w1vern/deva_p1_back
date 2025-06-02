@@ -162,7 +162,7 @@ async def download_file(file: File = Depends(get_file),
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{file.file_name}"'})
 
-@router.get("minio_url/{file_id}")
+@router.get("/minio_url/{file_id}")
 async def get_minio_url(file: File = Depends(get_file),
                         user: User = Depends(get_file_viewer),
                         minio_client: Minio = Depends(get_s3_client)
