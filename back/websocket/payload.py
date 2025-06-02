@@ -52,19 +52,19 @@ async def task_payload(redis: Redis,
             if main_task.user_id != user_id:
                 flag = False
                 yield TaskSchema(id=main_task.id,
-                                 done=False,
-                                 status=0,
+                                 done=True,
+                                 status=1,
                                  task_type=main_task.task_type
                                  ).model_dump_json()
         for task in tasks:
-            if not task.origin_task_id and \
-                    task.id not in [_.id for _ in tasks if _.id != task.id]:
-                flag = False
-                yield TaskSchema(id=task.id,
-                                 done=True,
-                                 status=1,
-                                 task_type=task.task_type
-                                 ).model_dump_json()
+            # if not task.origin_task_id and \
+            #         task.id not in [_.id for _ in tasks if _.id != task.id]:
+            #     flag = False
+            #     yield TaskSchema(id=task.id,
+            #                      done=True,
+            #                      status=1,
+            #                      task_type=task.task_type
+            #                      ).model_dump_json()
 
             if cached := await redis_get_and_delete(redis, f"{RedisType.task_error}:{task.id}"):
                 tasks.pop(tasks.index(task))
