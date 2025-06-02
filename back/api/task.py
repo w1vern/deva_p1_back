@@ -32,6 +32,9 @@ async def create_task(new_task: TaskCreateSchema,
                       ) -> ActiveTaskSchema:
     if project.origin_file is None:
         raise ProjectHasNoOriginFileException()
+    if new_task.task_type == TaskType.summary.value:
+        if len([task for task in await tr.get_by_project(project) if task.done is True]) > 0:
+            raise SummaryInTimeWithOtherTasksException()
     pattern = f"{RedisType.task_cache}:{project.id}:"
     keys = await redis.keys(f"{pattern}*")
     if len(keys) > 1:

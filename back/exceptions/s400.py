@@ -87,3 +87,7 @@ class UserAlreadyInvitedException(BaseCustomHTTPException):
 class UserNotInvitedException(BaseCustomHTTPException):
     def __init__(self):
         super().__init__(400, "User is not invited")
+
+class SummaryInTimeWithOtherTasksException(BaseCustomHTTPException):
+    def __init__(self):
+        super().__init__(400, "Summary in time with other tasks")
