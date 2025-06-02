@@ -20,7 +20,7 @@ from database.redis import RedisType, get_redis_client
 router = APIRouter(prefix="/task", tags=["task"])
 
 
-@router.post("")
+@router.post("/{project_id}")
 async def create_task(new_task: TaskCreateSchema,
                       project: Project = Depends(get_project),
                       user: User = Depends(get_project_editor),

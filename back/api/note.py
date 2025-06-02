@@ -15,7 +15,7 @@ from back.schemas.user import UserSchema
 router = APIRouter(prefix="/note", tags=["note"])
 
 
-@router.post("")
+@router.post("/{file_id}")
 async def create_note(new_note: CreateNoteSchema,
                       file: File = Depends(get_file),
                       user: User = Depends(get_file_editor),
