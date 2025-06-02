@@ -24,7 +24,7 @@ async def redis_get_and_delete(redis: Redis, key: str) -> Any | None:
     return None
 
 
-def websocket_package(data: dict[str, Any], package_type: str) -> WebsocketMessage:
+def websocket_package(data: Any, package_type: str) -> WebsocketMessage:
     return WebsocketMessage(message_type=package_type, data=data)
 
 
@@ -72,7 +72,7 @@ async def task_payload(redis: Redis,
             if cached := await redis_get_and_delete(redis, f"{RedisType.task_error}:{task.id}"):
                 tasks.pop(tasks.index(task))
                 flag = False
-                yield websocket_package({"message": cached}, "task_error")
+                yield websocket_package(cached, "task_error")
 
             if cached := await redis_get_and_delete(redis, f"{RedisType.task_status}:{task.id}"):
                 flag = False
@@ -140,6 +140,6 @@ async def redis_to_websocket(redis: Redis,
     while True:
         data = await redis_get_and_delete(redis, f"{RedisType.project_doc_bytes}:{project.id}:{user_id}")
         if data:
-            yield websocket_package({"data": data}, "project_doc_bytes")
+            yield websocket_package(data, "project_doc_bytes")
         else:
             yield None
