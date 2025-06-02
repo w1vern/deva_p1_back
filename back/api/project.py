@@ -149,18 +149,18 @@ async def websocket_aaa(websocket: WebSocket,
                         ):
     await websocket.accept()
     try:
-        await websocket.send_json(WebsocketMessage(message_type="connection", data="Connected").model_dump())
+        await websocket.send_text(WebsocketMessage(message_type="connection", data="Connected").model_dump_json())
         async for item in start_polling(websocket,
                                         redis,
                                         project,
                                         user.id,
                                         session):
-            await websocket.send_json(item.model_dump())
+            await websocket.send_text(item.model_dump_json())
     except WebSocketDisconnect:
-        await websocket.send_json(WebsocketMessage(message_type="connection", data="Disconnected").model_dump())
+        await websocket.send_text(WebsocketMessage(message_type="connection", data="Disconnected").model_dump_json())
     except Exception as e:
         try:
-            await websocket.send_json(WebsocketMessage(message_type="error", data=str(e)).model_dump())
+            await websocket.send_text(WebsocketMessage(message_type="error", data=str(e)).model_dump_json())
         except Exception as e:
             await websocket.send_text(str(e))
     finally:
