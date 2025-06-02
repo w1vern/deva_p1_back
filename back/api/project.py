@@ -6,8 +6,8 @@ from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from deva_p1_db.models import Project, User
-from deva_p1_db.repositories import (FileRepository, InvitedUserRepository,
-                                     ProjectRepository, TaskRepository)
+from deva_p1_db.repositories import (FileRepository, ProjectRepository,
+                                     TaskRepository)
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from minio import Minio
