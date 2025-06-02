@@ -111,8 +111,11 @@ async def create_task(new_task: TaskCreateSchema,
                 return ActiveTaskSchema.from_db(origin_task)
         case _:
             raise InvalidTaskTypeException()
+    task_type = new_task.task_type
+    if task_type == TaskType.summary_edit.value:
+        task_type = TaskType.summary.value
     task = await tr.create(
-        task_type=new_task.task_type,
+        task_type=task_type,
         project=project,
         user=user,
         prompt=new_task.prompt

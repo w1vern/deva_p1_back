@@ -26,6 +26,8 @@ from back.schemas.user import UserSchema
 from config import settings
 from database.database import session_manager
 from database.minio import get_s3_client
+from database.redis import RedisType, get_redis_client
+from redis.asyncio import Redis
 
 router = APIRouter(prefix="/file", tags=["file"])
 
@@ -35,16 +37,20 @@ async def upload_file(file: Annotated[UploadFile, fastapi_file(...)],
                       project: Project = Depends(get_project),
                       user: UserSchema = Depends(get_project_editor),
                       minio_client: Minio = Depends(get_s3_client),
+                      redis: Redis = Depends(get_redis_client),
                       fr: FileRepository = Depends(get_file_repo),
                       pr: ProjectRepository = Depends(get_project_repo),
                       session: AsyncSession = Depends(session_manager.session)
                       ) -> FileSchema:
+
     if file.filename is None:
         file.filename = ""
 
     content_type = mimetypes.guess_type(file.filename)[0]
     if content_type is None:
         raise UndefinedFileTypeException()
+    await redis.set(f"{RedisType.project_update}:{project.id}", 1, ex=Config.websocket_redis_message_lifetime)
+
     file_type = resolve_file_type(content_type)
     file_category = file_type.category
 
@@ -106,8 +112,10 @@ async def upload_file(file: Annotated[UploadFile, fastapi_file(...)],
 async def update_file(edited_fields: FileEditSchema,
                       file: File = Depends(get_file),
                       user: User = Depends(get_file_editor),
+                      redis: Redis = Depends(get_redis_client),
                       fr: FileRepository = Depends(get_file_repo)
                       ) -> FileSchema:
+    await redis.set(f"{RedisType.project_update}:{file.project.id}", 1, ex=Config.websocket_redis_message_lifetime)
     await fr.update_metadata(
         file=file,
         is_hide=edited_fields.metadata_is_hide,
@@ -123,9 +131,11 @@ async def update_file(edited_fields: FileEditSchema,
 @router.delete("/{file_id}")
 async def hide_file(file: File = Depends(get_file),
                     user: User = Depends(get_file_editor),
+                    redis: Redis = Depends(get_redis_client),
                     pr: ProjectRepository = Depends(get_file_repo)
                     ) -> None:
     project = file.project
+    await redis.set(f"{RedisType.project_update}:{project.id}", 1, ex=Config.websocket_redis_message_lifetime)
     category = resolve_file_type(file.file_type).category
     go_down = False
     match category:
@@ -162,12 +172,12 @@ async def download_file(file: File = Depends(get_file),
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{file.file_name}"'})
 
+
 @router.get("/minio_url/{file_id}")
 async def get_minio_url(file: File = Depends(get_file),
                         user: User = Depends(get_file_viewer),
                         minio_client: Minio = Depends(get_s3_client)
                         ) -> str:
-
 
     return minio_client.presigned_get_object(
         bucket_name=settings.minio_bucket,

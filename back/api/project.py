@@ -14,6 +14,7 @@ from minio import Minio
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from back.config import Config
 from back.depends import (get_file_repo, get_project, get_project_editor,
                           get_project_repo, get_project_viewer, get_task_repo,
                           get_user_db)
@@ -27,7 +28,7 @@ from back.websocket.start_polling import start_polling
 from config import settings
 from database.database import session_manager
 from database.minio import get_s3_client
-from database.redis import get_redis_client
+from database.redis import RedisType, get_redis_client
 
 
 router = APIRouter(prefix="/project", tags=["project"])
@@ -69,8 +70,10 @@ async def get_by_id(project: Project = Depends(get_project),
 @router.delete("/{project_id}")
 async def delete(project: Project = Depends(get_project),
                  user: User = Depends(get_project_editor),
+                 redis: Redis = Depends(get_redis_client),
                  pr: ProjectRepository = Depends(get_project_repo)
                  ):
+    await redis.set(f"{RedisType.project_update}:{project.id}", 1, ex=Config.websocket_redis_message_lifetime)
     await pr.delete(project)
     return {"message": "OK"}
 
@@ -79,8 +82,10 @@ async def delete(project: Project = Depends(get_project),
 async def update(update_data: EditProjectSchema,
                  project: Project = Depends(get_project),
                  user: User = Depends(get_project_editor),
+                 redis: Redis = Depends(get_redis_client),
                  pr: ProjectRepository = Depends(get_project_repo)
                  ):
+    await redis.set(f"{RedisType.project_update}:{project.id}", 1, ex=Config.websocket_redis_message_lifetime)
     await pr.update(project,
                     update_data.name,
                     update_data.description)
@@ -113,9 +118,18 @@ async def download_project(project: Project = Depends(get_project),
     images = deepcopy(await fr.get_active_images(project))
     for image in images:
         image.file_name = f"images/{image.file_name}"
-    if project.summary is not None:
-        images.append(project.summary)
-    if project.transcription is not None:
+    md = ""
+    if project.summary:
+        obj = minio_client.get_object(
+            bucket_name=settings.minio_bucket,
+            object_name=str(project.summary.id),
+        )
+        md = obj.read().decode("utf-8")
+        obj.close()
+        obj.release_conn()
+        for image in images:
+            md = md.replace(str(image.id), image.file_name)
+    if project.transcription:
         images.append(project.transcription)
 
     zip_stream = BytesIO()
@@ -126,9 +140,12 @@ async def download_project(project: Project = Depends(get_project),
                 object_name=str(image.id),
             )
             with zip_file.open(image.file_name, "w") as dest_file:
-                shutil.copyfileobj(obj, dest_file, length=1024*64)
+                shutil.copyfileobj(obj, dest_file, length=obj.fileno())
             obj.close()
             obj.release_conn()
+        if project.summary:
+            with zip_file.open(project.summary.file_name, "w") as summary_file:
+                summary_file.write(md.encode("utf-8"))
 
     zip_stream.seek(0)
     return StreamingResponse(
