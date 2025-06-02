@@ -149,7 +149,6 @@ async def websocket_aaa(websocket: WebSocket,
     await websocket.accept()
     try:
         await websocket.send_json({"message": "Connected"})
-        raise HTTPException(status_code=499, detail="new exception")
         async for item in start_polling(websocket,
                                         redis,
                                         project,
@@ -157,6 +156,8 @@ async def websocket_aaa(websocket: WebSocket,
                                         session):
             await websocket.send_json(item)
     except WebSocketDisconnect:
-        pass
+        await websocket.send_json({"message": "Disconnected"})
+    except Exception as e:
+        await websocket.send_json({"error": str(e)})
     finally:
         await websocket.close()
