@@ -152,7 +152,7 @@ async def download_project(project: Project = Depends(get_project),
         zip_stream,
         media_type="application/zip",
         headers={
-            "Content-Disposition": f'attachment; filename="{user.login}.zip"'}
+            "Content-Disposition": f'attachment; filename="{project.name}.zip"'}
     )
 
 
