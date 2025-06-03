@@ -183,7 +183,7 @@ async def get_minio_url(file: File = Depends(get_file),
         bucket_name=settings.minio_bucket,
         object_name=str(file.id),
         expires=timedelta(seconds=Config.minio_url_live_time)
-    ).replace(f"{settings.minio_ip}:{settings.minio_port}", f"{settings.minio_url}")
+    )
 
 
 @router.get("/video/{file_id}")
