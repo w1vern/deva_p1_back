@@ -59,6 +59,12 @@ async def handle_done_task(msg: TaskReadyToBack,
             if len(tasks) == 1:
                 await send_message_and_cache(broker, redis, tasks[0], handled_task.project_id)
                 await redis.set(f"{RedisType.task_status}:{tasks[0].id}", 0.0, ex=Config.redis_task_status_lifetime)
+        if handled_task.task_type == TaskType.summary.value:
+            origin_task = await tr.get_by_id(handled_task.origin_task_id)
+            if origin_task is None:
+                raise Exception("logic error")
+            await tr.task_done(origin_task)
+            
     await redis.delete(f"{RedisType.task_cache}:{handled_task.project_id}:{handled_task.task_type}")
     await redis.set(f"{RedisType.task_done}:{msg.task_id}", 1, ex=Config.redis_task_status_lifetime)
 
