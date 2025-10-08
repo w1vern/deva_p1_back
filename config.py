@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     minio_password: str = "minioadmin"
     minio_bucket: str = "my-bucket"
     minio_secure: bool = False
+    login: str = "NONE"
+    password: str = ""
     
 
 settings = Settings()

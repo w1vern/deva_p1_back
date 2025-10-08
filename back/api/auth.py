@@ -13,6 +13,7 @@ from back.schemas.user import (CredsSchema, RegisterSchema, UserSchema,
                                UserUpdateSchema)
 from back.token import AccessToken, RefreshToken
 from database.redis import RedisType, get_redis_client
+from config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -59,6 +60,8 @@ async def register(request: Request,
         raise PasswordsDoNotMatchException()
     if await ur.get_by_login(register_data.login) is not None:
         raise UserAlreadyExistsException()
+    if (register_data.login != settings.login or register_data.password != settings.password) and settings.login != "NONE":
+        raise SingleUserModeException()
     user = await ur.create(register_data.login, register_data.password)
     if user is None:
         raise SendFeedbackToAdminException()

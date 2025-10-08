@@ -51,6 +51,10 @@ class LoginLockedException(BaseCustomHTTPException):
     def __init__(self, seconds: int):
         super().__init__(
             401, f"Too many attempts. Try again in {seconds} seconds")
+        
+class SingleUserModeException(BaseCustomHTTPException):
+    def __init__(self) -> None:
+        super().__init__(401, "Single user mode is enabled")
 
 
 class TooManyIncorrectCredentialsException(BaseCustomHTTPException):
